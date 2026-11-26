@@ -538,7 +538,7 @@ function renderWrong(){
     <button class="btn btn-ghost" id="wClear">清空错题本</button></div>
   </div>`;
   document.getElementById("wStart").onclick=()=>{
-    state.practice={pool:shuffle(pool),idx:0,answers:{},fromWrong:true};
+    state.practice={pool:shuffle(pool),idx:0,answers:{},results:{},fromWrong:true};
     renderPracticeCard();
   };
   document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:[],multi:[],judge:[],qa:[]});renderWrong();}};
