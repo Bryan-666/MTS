@@ -45,6 +45,7 @@
   .explain{margin-top:8px;font-size:14px;color:var(--txt);}
   .explain b{color:var(--blue);}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
+  input[type=checkbox]{width:18px;height:18px;vertical-align:middle;margin-right:4px;cursor:pointer;}
   .row input,.row select{padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;}
   .progress{height:8px;background:#ECEFF4;border-radius:6px;overflow:hidden;margin:10px 0;}
   .progress>i{display:block;height:100%;background:var(--blue);width:0;}
@@ -278,6 +279,9 @@ function renderPractice(){
         <option value="seq">顺序</option><option value="random">随机</option>
       </select></label>
       <label>题量：<input id="pLimit" type="number" min="0" placeholder="0=全部" style="width:86px"></label>
+      <label>答对后：<select id="pAuto">
+        <option value="manual">手动点下一题</option><option value="auto">答对自动跳下一题</option>
+      </select></label>
       <button class="btn btn-primary" id="pStart">开始练习</button>
     </div>
     <div class="row">
@@ -289,7 +293,8 @@ function renderPractice(){
   </div>`;
   const start=(pool)=>{
     if(!pool.length){alert("没有匹配的题目");return;}
-    state.practice={pool,idx:0,answers:{},results:{}};saveProgress();renderPracticeCard("practice");
+    const auto=document.getElementById("pAuto")&&document.getElementById("pAuto").value==="auto";
+    state.practice={pool,idx:0,answers:{},results:{},autoNext:auto};saveProgress();renderPracticeCard("practice");
   };
   const selectedTypes=()=>{
     const checked=[...document.querySelectorAll(".ptype:checked")].map(b=>b.value);
@@ -300,6 +305,12 @@ function renderPractice(){
   typeBoxes.forEach(b=>b.onchange=()=>{
     if(b===allBox&&b.checked){typeBoxes.forEach(x=>{if(x!==allBox)x.checked=false;});}
     else if(b!==allBox&&b.checked){allBox.checked=false;}
+  });
+  // 双击某个题型：只选该题型并直接开始练习
+  typeBoxes.forEach(b=>b.ondblclick=()=>{
+    typeBoxes.forEach(x=>x.checked=false);
+    b.checked=true;
+    start(buildPool(b.value,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0));
   });
   document.getElementById("pStart").onclick=()=>{
     const sel=selectedTypes();
@@ -369,16 +380,21 @@ function renderPracticeCard(ctx){
   </div>`;
 
   const submitCurrent=()=>{
+    let correct;
     if(t==="qa"){
       p.answers[key+"_text"]=document.getElementById("qaText").value;
-      p.results[key]={self:undefined};
+      p.results[key]={self:undefined};correct=undefined;
     }else{
       const curSel=(p.answers[key]||[]).slice();
-      const correct=isCorrect(t,q,curSel);
+      correct=isCorrect(t,q,curSel);
       p.results[key]={correct,sel:curSel};
       recordResult(t,q,correct,ctx);recordAnswer(t,correct);
     }
     saveProgress();renderPracticeCard(ctx);
+    const auto=p.autoNext&&correct===true&&t!=="qa";
+    if(auto&&p.idx<p.pool.length-1){
+      setTimeout(()=>{p.idx++;saveProgress();renderPracticeCard(ctx);},600);
+    }
   };
   bindOptions(t,q,sel,done,p,submitCurrent);
   document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderPracticeCard(ctx);};
