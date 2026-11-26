@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>铣削刀具销售知识刷题</title>
 <style>
-  :root{--blue:#3370FF;--bg:#F5F7FB;--card:#fff;--line:#E3E8F0;--txt:#1F2733;--sub:#6B7686;--green:#16A34A;--red:#E5484D;--amber:#F59E0B;}
+  :root{--blue:#3370FF;--bg:#F5F7FB;--card:#fff;--line:#E3E8F0;--txt:#1F2733;--sub:#6B7686;--green:#16A34A;--red:#E5484D;--amber:#F59E0B;--purple:#7C3AED;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:"Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;}
   .wrap{max-width:860px;margin:0 auto;padding:16px;}
   header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
   header h1{font-size:20px;}
   nav{display:flex;gap:8px;flex-wrap:wrap;}
-  nav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;color:var(--sub);}
+  nav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px;color:var(--sub);}
   nav button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;}
   .muted{color:var(--sub);font-size:13px;}
@@ -30,7 +30,7 @@
   .opt .key{font-weight:bold;min-width:22px;}
   .tag{display:inline-block;font-size:12px;border-radius:6px;padding:2px 8px;margin-right:6px;}
   .tag.single{background:#EEF3FF;color:var(--blue);}
-  .tag.multi{background:#F3EEFF;color:#7C3AED;}
+  .tag.multi{background:#F3EEFF;color:var(--purple);}
   .tag.judge{background:#EAF7EF;color:var(--green);}
   .tag.qa{background:#FFF4E5;color:var(--amber);}
   .stem{font-size:16px;margin-top:8px;}
@@ -41,6 +41,7 @@
   .explain{margin-top:8px;font-size:14px;color:var(--txt);}
   .explain b{color:var(--blue);}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
+  .row input,.row select{padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;}
   .progress{height:8px;background:#ECEFF4;border-radius:6px;overflow:hidden;margin:10px 0;}
   .progress>i{display:block;height:100%;background:var(--blue);width:0;}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
@@ -49,7 +50,6 @@
   table{width:100%;border-collapse:collapse;font-size:14px;}
   th,td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;}
   th{color:var(--sub);font-weight:600;}
-  .hidden{display:none;}
   .chip{font-size:12px;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:3px 10px;}
   .score-big{font-size:40px;font-weight:bold;text-align:center;margin:10px 0;}
   .selfeval{display:flex;gap:10px;margin-top:10px;}
@@ -60,7 +60,24 @@
   .qnav-btn.qnav-done{border-color:var(--amber);color:var(--amber);}
   .qnav-btn.qnav-ok{background:#EAF7EF;border-color:var(--green);color:var(--green);}
   .qnav-btn.qnav-no{background:#FCEEEE;border-color:var(--red);color:var(--red);}
-  @media(max-width:600px){.wrap{padding:10px;}header h1{font-size:17px;}}
+  .star-btn{border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:15px;padding:6px 10px;color:var(--sub);}
+  .star-btn.on{color:var(--amber);border-color:var(--amber);background:#FFF4E5;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:12px 0;}
+  .bar-label{width:96px;font-size:13px;}
+  .bar-track{flex:1;height:14px;background:#ECEFF4;border-radius:7px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--blue);border-radius:7px;}
+  .bar-val{width:64px;font-size:13px;text-align:right;}
+  .hidden{display:none;}
+  @media(max-width:600px){
+    .wrap{padding:10px;}
+    header h1{font-size:17px;}
+    nav{gap:6px;}
+    nav button{padding:7px 10px;font-size:13px;}
+    .opt{padding:11px 12px;}
+    .btn{padding:10px 14px;}
+    .stem{font-size:15px;}
+    .bar-label{width:78px;}
+  }
 </style>
 </head>
 <body>
@@ -72,6 +89,7 @@
       <button data-view="review">背题模式</button>
       <button data-view="exam">模拟考试</button>
       <button data-view="wrong">错题本</button>
+      <button data-view="fav">收藏</button>
       <button data-view="stats">成绩统计</button>
     </nav>
   </header>
@@ -83,13 +101,15 @@ const DATA = {"single": [{"no": 1, "stem": "ISO 513 标准把被加工材料分�
 const TYPE_NAME = {single:"单项选择", multi:"多项选择", judge:"判断题", qa:"问答题"};
 const EXAM_PLAN = {single:15, multi:20, judge:10, qa:4};
 const SCORE = {single:2, multi:2, judge:1, qa:5};
-const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1";
+const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1";
 
 let state = {view:"practice"};
 
 function loadLS(k, def){try{return JSON.parse(localStorage.getItem(k))||def;}catch(e){return def;}}
 function saveLS(k,v){localStorage.setItem(k,JSON.stringify(v));}
 const WRONG_PASS=3;
+
+/* ---------- 错题本 ---------- */
 function getWrong(){
   let w=loadLS(LS_WRONG,{single:{},multi:{},judge:{},qa:{}});
   ["single","multi","judge","qa"].forEach(t=>{
@@ -99,23 +119,69 @@ function getWrong(){
   return w;
 }
 function setWrong(w){saveLS(LS_WRONG,w);}
-function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function qkey(t,q){return t+"#"+q.no;}
 function wrongCount(t,q){const w=getWrong();return (w[t]&&w[t][q.no]!=null)?w[t][q.no]:0;}
 function inWrong(t,q){const w=getWrong();return !!(w[t]&&w[t][q.no]!=null);}
-// correct=true：连续答对+1，达 WRONG_PASS 次移出错题本；correct=false：答错清零并保留在错题本
-function recordResult(t,q,correct){
+function recordResult(t,q,correct,ctx){
   const w=getWrong();if(!w[t])w[t]={};
   const key=String(q.no);
-  if(correct){
-    const c=(w[t][key]||0)+1;
-    if(c>=WRONG_PASS)delete w[t][key]; else w[t][key]=c;
+  if(ctx==="wrong"){
+    // 错题本单独重练：答对累计，连续答对 3 次移除；答错清零
+    if(correct){
+      const c=(w[t][key]||0)+1;
+      if(c>=WRONG_PASS)delete w[t][key]; else w[t][key]=c;
+    }else{ w[t][key]=0; }
   }else{
+    // 普通练习 / 收藏练习 / 考试：答对不进、不改动错题本；答错才加入
+    if(correct)return;
     w[t][key]=0;
   }
   setWrong(w);
 }
-function toggleWrong(t,q,add){const w=getWrong();if(!w[t])w[t]={};const key=String(q.no);if(add)w[t][key]=0;else delete w[t][key];setWrong(w);}
+
+/* ---------- 答题记录（题型正确率） ---------- */
+function getRecord(){
+  let r=loadLS(LS_RECORD,{single:{total:0,right:0},multi:{total:0,right:0},judge:{total:0,right:0},qa:{total:0,right:0}});
+  ["single","multi","judge","qa"].forEach(t=>{if(!r[t]||typeof r[t]!=="object")r[t]={total:0,right:0};});
+  return r;
+}
+function recordAnswer(t,correct){
+  if(correct===undefined)return;
+  const r=getRecord();r[t].total++;if(correct)r[t].right++;saveLS(LS_RECORD,r);
+}
+function accuracy(t){const r=getRecord()[t];return r.total?Math.round(r.right/r.total*100):null;}
+
+/* ---------- 收藏 ---------- */
+function getFav(){
+  let f=loadLS(LS_FAV,{single:[],multi:[],judge:[],qa:[]});
+  ["single","multi","judge","qa"].forEach(t=>{if(!Array.isArray(f[t]))f[t]=[];});
+  return f;
+}
+function inFav(t,q){return getFav()[t].includes(q.no);}
+function toggleFav(t,q){const f=getFav();const i=f[t].indexOf(q.no);if(i>=0)f[t].splice(i,1);else f[t].push(q.no);saveLS(LS_FAV,f);}
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function qkey(t,q){return t+"#"+q.no;}
+
+/* ---------- 进度持久化 ---------- */
+function snapPool(pool){return pool.map(x=>({t:x.t,no:x.q.no}));}
+function restorePool(snap){return (snap||[]).map(x=>({t:x.t,q:DATA[x.t].find(q=>q.no===x.no)})).filter(x=>x.q);}
+function saveProgress(){
+  const prog={};
+  if(state.practice)prog.practice={pool:snapPool(state.practice.pool),idx:state.practice.idx,answers:state.practice.answers,results:state.practice.results};
+  if(state.wrongPractice)prog.wrongPractice={pool:snapPool(state.wrongPractice.pool),idx:state.wrongPractice.idx,answers:state.wrongPractice.answers,results:state.wrongPractice.results};
+  if(state.favPractice)prog.favPractice={pool:snapPool(state.favPractice.pool),idx:state.favPractice.idx,answers:state.favPractice.answers,results:state.favPractice.results};
+  if(state.review)prog.review={pool:snapPool(state.review.pool),idx:state.review.idx,hide:state.review.hide};
+  if(state.exam&&!state.exam.submitted)prog.exam={pool:snapPool(state.exam.paper),idx:state.exam.idx,answers:state.exam.answers,qaEval:state.exam.qaEval};
+  saveLS(LS_PROGRESS,prog);
+}
+function loadProgress(){
+  const prog=loadLS(LS_PROGRESS,{});
+  if(prog.practice)state.practice={pool:restorePool(prog.practice.pool),idx:prog.practice.idx,answers:prog.practice.answers||{},results:prog.practice.results||{}};
+  if(prog.wrongPractice)state.wrongPractice={pool:restorePool(prog.wrongPractice.pool),idx:prog.wrongPractice.idx,answers:prog.wrongPractice.answers||{},results:prog.wrongPractice.results||{}};
+  if(prog.favPractice)state.favPractice={pool:restorePool(prog.favPractice.pool),idx:prog.favPractice.idx,answers:prog.favPractice.answers||{},results:prog.favPractice.results||{}};
+  if(prog.review)state.review={pool:restorePool(prog.review.pool),idx:prog.review.idx,hide:!!prog.review.hide};
+  if(prog.exam)state.exam={paper:restorePool(prog.exam.pool),idx:prog.exam.idx,answers:prog.exam.answers||{},qaEval:prog.exam.qaEval||{},submitted:false};
+}
 
 const app=document.getElementById("app");
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
@@ -129,42 +195,107 @@ function render(){
   else if(state.view==="review"){ state.review?renderReviewCard():renderReview(); }
   else if(state.view==="exam"){ (state.exam&&!state.exam.submitted)?renderExamCard():renderExamHome(); }
   else if(state.view==="wrong"){ state.wrongPractice?renderPracticeCard("wrong"):renderWrong(); }
+  else if(state.view==="fav"){ state.favPractice?renderPracticeCard("fav"):renderFav(); }
   else if(state.view==="stats") renderStats();
 }
 
+/* ---------- 题库检索 ---------- */
+function searchPool(kw){
+  kw=(kw||"").trim().toLowerCase();if(!kw)return[];
+  let out=[];
+  Object.keys(DATA).forEach(t=>DATA[t].forEach(q=>{
+    const hay=(q.stem+" "+q.options.map(o=>o.text).join(" ")+" "+q.answer.join("")).toLowerCase();
+    if(hay.includes(kw))out.push({t,q});
+  }));
+  return out;
+}
+function bindCheckAll(cls){
+  const boxes=[...document.querySelectorAll("."+cls)];
+  const all=boxes.find(b=>b.value==="all");
+  boxes.forEach(b=>b.onchange=()=>{
+    if(b===all&&b.checked){boxes.forEach(x=>{if(x!==all)x.checked=false;});}
+    else if(b!==all&&b.checked){all.checked=false;}
+  });
+}
+function selectedTypes(cls){
+  const checked=[...document.querySelectorAll("."+cls+":checked")].map(b=>b.value);
+  return checked.includes("all")?"all":checked;
+}
+function buildPool(type,order,kw,limit){
+  let pool=[];
+  const types=(type==="all")?Object.keys(DATA):(Array.isArray(type)?type:[type]);
+  if(kw&&kw.trim()){pool=searchPool(kw);}
+  else{types.forEach(t=>DATA[t].forEach(q=>pool.push({t,q})));}
+  if(order==="random")pool=shuffle(pool);
+  if(limit&&limit>0)pool=pool.slice(0,limit);
+  return pool;
+}
+
 /* ---------- 刷题练习 ---------- */
-function practiceStateName(ctx){return ctx==="wrong"?"wrongPractice":"practice";}
-function backToPracticeHome(ctx){ctx=ctx||"practice";state[practiceStateName(ctx)]=null; if(ctx==="wrong")renderWrong(); else renderPractice();}
+function practiceStateName(ctx){return {wrong:"wrongPractice",fav:"favPractice"}[ctx]||"practice";}
+function backToPracticeHome(ctx){
+  ctx=ctx||"practice";state[practiceStateName(ctx)]=null;saveProgress();
+  if(ctx==="wrong")renderWrong(); else if(ctx==="fav")renderFav(); else renderPractice();
+}
 function renderPractice(){
   const types=Object.keys(DATA);
+  const weak=weakType();
   app.innerHTML=`
   <div class="card">
-    <div class="muted">选择题型与顺序，逐题作答，即时显示对错与解析；答错自动加入错题本。</div>
+    <div class="muted">选择题型、顺序与题量，逐题作答，即时显示对错与解析；答错自动加入错题本。</div>
+    <div class="row" style="align-items:center;flex-wrap:wrap">
+      <span class="muted">题型：</span>
+      <label><input type="checkbox" class="ptype" value="all" checked> 全部</label>
+      ${types.map(t=>`<label><input type="checkbox" class="ptype" value="${t}"> ${TYPE_NAME[t]}（${DATA[t].length}）</label>`).join("")}
+    </div>
     <div class="row">
-      <label>题型：
-        <select id="pType">
-          <option value="all">全部</option>
-          ${types.map(t=>`<option value="${t}">${TYPE_NAME[t]}（${DATA[t].length}）</option>`).join("")}
-        </select>
-      </label>
-      <label>顺序：
-        <select id="pOrder">
-          <option value="seq">顺序</option>
-          <option value="random">随机</option>
-        </select>
-      </label>
+      <label>顺序：<select id="pOrder">
+        <option value="seq">顺序</option><option value="random">随机</option>
+      </select></label>
+      <label>题量：<input id="pLimit" type="number" min="0" placeholder="0=全部" style="width:86px"></label>
       <button class="btn btn-primary" id="pStart">开始练习</button>
     </div>
+    <div class="row">
+      <input id="pKw" placeholder="关键词 / 材料牌号搜题，如 304、钛合金、P20" style="flex:1;min-width:180px">
+      <button class="btn btn-ghost" id="pSearch">搜题练习</button>
+      ${weak?`<button class="btn btn-ghost" id="pWeak">只练最弱题型：${TYPE_NAME[weak]}</button>`:""}
+    </div>
+    <div class="muted" id="pSearchInfo" style="margin-top:8px"></div>
   </div>`;
-  document.getElementById("pStart").onclick=()=>{
-    const type=document.getElementById("pType").value;
-    const order=document.getElementById("pOrder").value;
-    let pool=[];
-    (type==="all"?types:[type]).forEach(t=>{DATA[t].forEach(q=>pool.push({t,q}));});
-    if(order==="random")pool=shuffle(pool);
-    state.practice={pool,idx:0,answers:{},results:{}};
-    renderPracticeCard("practice");
+  const start=(pool)=>{
+    if(!pool.length){alert("没有匹配的题目");return;}
+    state.practice={pool,idx:0,answers:{},results:{}};saveProgress();renderPracticeCard("practice");
   };
+  const selectedTypes=()=>{
+    const checked=[...document.querySelectorAll(".ptype:checked")].map(b=>b.value);
+    return checked.includes("all")?"all":checked;
+  };
+  const typeBoxes=[...document.querySelectorAll(".ptype")];
+  const allBox=typeBoxes.find(b=>b.value==="all");
+  typeBoxes.forEach(b=>b.onchange=()=>{
+    if(b===allBox&&b.checked){typeBoxes.forEach(x=>{if(x!==allBox)x.checked=false;});}
+    else if(b!==allBox&&b.checked){allBox.checked=false;}
+  });
+  document.getElementById("pStart").onclick=()=>{
+    const sel=selectedTypes();
+    if(sel!=="all"&&!sel.length){alert("请至少选择题型");return;}
+    start(buildPool(sel,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0));
+  };
+  document.getElementById("pSearch").onclick=()=>{
+    const kw=document.getElementById("pKw").value;
+    const pool=searchPool(kw);
+    document.getElementById("pSearchInfo").textContent=pool.length?`匹配到 ${pool.length} 题`:"无匹配结果";
+    start(pool);
+  };
+  const kwInput=document.getElementById("pKw");
+  kwInput.oninput=()=>{const pool=searchPool(kwInput.value);document.getElementById("pSearchInfo").textContent=pool.length?`匹配到 ${pool.length} 题`:"无匹配结果";};
+  const weakBtn=document.getElementById("pWeak");
+  if(weakBtn)weakBtn.onclick=()=>{start(buildPool(weak,"random","",0));};
+}
+function weakType(){
+  let best=null,bestAcc=101;
+  Object.keys(DATA).forEach(t=>{const a=accuracy(t);if(a!=null&&a<bestAcc){bestAcc=a;best=t;}});
+  return best;
 }
 
 function renderPracticeCard(ctx){
@@ -181,11 +312,16 @@ function renderPracticeCard(ctx){
   const sel=(p.answers[key]||[]).slice();
   const done=!!p.results[key];
   const qaText=p.answers[key+"_text"]||"";
+  const fav=inFav(t,q);
   app.innerHTML=`
   <div class="card">
-    <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题${ctx==="wrong"?"（错题重练）":""}</div>
+    <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题${ctx==="wrong"?"（错题重练）":ctx==="fav"?"（收藏练习）":""}</div>
     <div class="progress"><i style="width:${(p.idx)/p.pool.length*100}%"></i></div>
-    <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>${ctx==="wrong"?'<span class="chip" style="margin-left:6px">错题重练</span>':""}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>
+      ${ctx==="wrong"?'<span class="chip">错题重练</span>':""}${ctx==="fav"?'<span class="chip">收藏练习</span>':""}
+      <button class="star-btn ${fav?"on":""}" id="favBtn" title="收藏/取消收藏">${fav?"★":"☆"} 收藏</button>
+    </div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     <div class="opts" id="opts">${renderOptions(t,q,sel,done)}</div>
     ${t==="qa"?`<textarea class="qa-box" id="qaText" ${done?"disabled":""} placeholder="在此输入你的作答（可对照下方参考答案要点自评）">${escapeHtml(qaText)}</textarea>`:""}
@@ -195,7 +331,7 @@ function renderPracticeCard(ctx){
       <button class="btn btn-ghost" id="pQuit">退出练习</button>
     </div>
     <div class="row">
-      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${p.pool.length}" value="${p.idx+1}" style="width:70px;padding:6px;border:1px solid var(--line);border-radius:8px"> 题</label>
+      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${p.pool.length}" value="${p.idx+1}" style="width:70px"> 题</label>
       <button class="btn btn-ghost" id="jumpBtn">跳转</button>
     </div>
     <div class="qnav">${p.pool.map((x,i)=>{
@@ -207,9 +343,22 @@ function renderPracticeCard(ctx){
     }).join("")}</div>
   </div>`;
 
-  bindOptions(t,q,sel,done,p);
-  if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;};}
-  document.getElementById("pQuit").onclick=()=>{state[sName]=null; if(ctx==="wrong")renderWrong(); else renderPractice();};
+  const submitCurrent=()=>{
+    if(t==="qa"){
+      p.answers[key+"_text"]=document.getElementById("qaText").value;
+      p.results[key]={self:undefined};
+    }else{
+      const curSel=(p.answers[key]||[]).slice();
+      const correct=isCorrect(t,q,curSel);
+      p.results[key]={correct,sel:curSel};
+      recordResult(t,q,correct,ctx);recordAnswer(t,correct);
+    }
+    saveProgress();renderPracticeCard(ctx);
+  };
+  bindOptions(t,q,sel,done,p,submitCurrent);
+  document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderPracticeCard(ctx);};
+  if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;saveProgress();};}
+  document.getElementById("pQuit").onclick=()=>{state[sName]=null;saveProgress(); if(ctx==="wrong")renderWrong(); else if(ctx==="fav")renderFav(); else renderPractice();};
 
   if(done){
     const r=p.results[key];
@@ -218,26 +367,15 @@ function renderPracticeCard(ctx){
   }
 
   const chk=document.getElementById("pCheck");
-  if(chk)chk.onclick=()=>{
-    if(t==="qa"){
-      p.answers[key+"_text"]=document.getElementById("qaText").value;
-      p.results[key]={self:undefined};
-    }else{
-      const curSel=(p.answers[key]||[]).slice();
-      const correct=isCorrect(t,q,curSel);
-      p.results[key]={correct,sel:curSel};
-      recordResult(t,q,correct);
-    }
-    renderPracticeCard(ctx);
-  };
+  if(chk)chk.onclick=submitCurrent;
   const prev=document.getElementById("pPrev"),next=document.getElementById("pNext");
-  if(prev)prev.onclick=()=>{if(p.idx>0){p.idx--;renderPracticeCard(ctx);}};
-  if(next)next.onclick=()=>{if(p.idx===p.pool.length-1){renderPracticeCard(ctx);}else{p.idx++;renderPracticeCard(ctx);}};
+  if(prev)prev.onclick=()=>{if(p.idx>0){p.idx--;saveProgress();renderPracticeCard(ctx);}};
+  if(next)next.onclick=()=>{if(p.idx===p.pool.length-1){renderPracticeCard(ctx);}else{p.idx++;saveProgress();renderPracticeCard(ctx);}};
   document.getElementById("jumpBtn").onclick=()=>{
     const n=parseInt(document.getElementById("jumpNo").value);
-    if(n>=1&&n<=p.pool.length){p.idx=n-1;renderPracticeCard(ctx);}
+    if(n>=1&&n<=p.pool.length){p.idx=n-1;saveProgress();renderPracticeCard(ctx);}
   };
-  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{p.idx=parseInt(b.dataset.i);renderPracticeCard(ctx);});
+  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{p.idx=parseInt(b.dataset.i);saveProgress();renderPracticeCard(ctx);});
 }
 
 function renderOptions(t,q,sel,disabled){
@@ -247,16 +385,24 @@ function renderOptions(t,q,sel,disabled){
       <span class="key">${o.key}.</span><span>${escapeHtml(o.text)}</span></div>`;
   }).join("");
 }
-function bindOptions(t,q,sel,disabled,p){
+function bindOptions(t,q,sel,disabled,p,onDbl){
   document.querySelectorAll("#opts .opt").forEach(el=>{
     if(disabled){el.classList.add("disabled");return;}
+    const k=el.dataset.key;
     el.onclick=()=>{
-      const k=el.dataset.key;
       let cur=p.answers[qkey(t,q)]||[];
       if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}
       else{cur=[k];}
-      p.answers[qkey(t,q)]=cur;
+      p.answers[qkey(t,q)]=cur;saveProgress();
       document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
+    };
+    el.ondblclick=()=>{
+      if(disabled)return;
+      let cur=p.answers[qkey(t,q)]||[];
+      if(t==="multi"){if(!cur.includes(k))cur.push(k);}else{cur=[k];}
+      p.answers[qkey(t,q)]=cur;saveProgress();
+      document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
+      onDbl&&onDbl();
     };
   });
 }
@@ -285,8 +431,7 @@ function renderQaFeedback(t,q,key,r,p,ctx){
   let selfHtml;
   if(r.self===undefined){
     selfHtml=`<div class="selfeval">
-      <button class="btn btn-green" data-e="1">我答对了</button>
-      <button class="btn btn-red" data-e="0">加入错题</button></div>`;
+      <button class="btn btn-green" data-e="1">我答对了</button><button class="btn btn-red" data-e="0">加入错题</button></div>`;
   }else{
     selfHtml=`<span class="chip">${r.self?"已计为答对":"已加入错题"}</span>`;
   }
@@ -294,8 +439,8 @@ function renderQaFeedback(t,q,key,r,p,ctx){
   fb.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     const ok=b.dataset.e==="1";
     p.results[key].self=ok;
-    recordResult(t,q,ok);
-    renderPracticeCard(ctx);
+    recordResult(t,q,ok,ctx);recordAnswer("qa",ok);
+    saveProgress();renderPracticeCard(ctx);
   });
 }
 
@@ -304,31 +449,25 @@ function renderReview(){
   const types=Object.keys(DATA);
   app.innerHTML=`
   <div class="card">
-    <div class="muted">背题模式：直接展示正确答案与解析，无需作答，可逐题浏览。</div>
+    <div class="muted">背题模式：浏览题目与答案解析，可先隐藏答案自测，再显示核对。</div>
+    <div class="row" style="align-items:center;flex-wrap:wrap">
+      <span class="muted">题型：</span>
+      <label><input type="checkbox" class="rtype" value="all" checked> 全部</label>
+      ${types.map(t=>`<label><input type="checkbox" class="rtype" value="${t}"> ${TYPE_NAME[t]}（${DATA[t].length}）</label>`).join("")}
+    </div>
     <div class="row">
-      <label>题型：
-        <select id="rType">
-          <option value="all">全部</option>
-          ${types.map(t=>`<option value="${t}">${TYPE_NAME[t]}（${DATA[t].length}）</option>`).join("")}
-        </select>
-      </label>
-      <label>顺序：
-        <select id="rOrder">
-          <option value="seq">顺序</option>
-          <option value="random">随机</option>
-        </select>
-      </label>
+      <label>顺序：<select id="rOrder">
+        <option value="seq">顺序</option><option value="random">随机</option>
+      </select></label>
       <button class="btn btn-primary" id="rStart">开始背题</button>
     </div>
   </div>`;
+  bindCheckAll("rtype");
   document.getElementById("rStart").onclick=()=>{
-    const type=document.getElementById("rType").value;
-    const order=document.getElementById("rOrder").value;
-    let pool=[];
-    (type==="all"?types:[type]).forEach(t=>{DATA[t].forEach(q=>pool.push({t,q}));});
-    if(order==="random")pool=shuffle(pool);
-    state.review={pool,idx:0};
-    renderReviewCard();
+    const sel=selectedTypes("rtype");
+    if(sel!=="all"&&!sel.length){alert("请至少选择题型");return;}
+    const pool=buildPool(sel,document.getElementById("rOrder").value,"",0);
+    state.review={pool,idx:0,hide:false};saveProgress();renderReviewCard();
   };
 }
 function renderReviewCard(){
@@ -339,16 +478,19 @@ function renderReviewCard(){
     return;
   }
   const {t,q}=r.pool[r.idx];
+  const hide=!!r.hide;
   const rightText=t==="judge"?(q.answer[0]==="T"?"√ 正确":"× 错误"):q.answer.join("、");
   let optsHtml="";
   if(q.options.length){
     optsHtml=`<div class="opts">${q.options.map(o=>{
-      const ok=q.answer.includes(o.key);
+      const ok=!hide&&q.answer.includes(o.key);
       return `<div class="opt ${ok?"correct":""} disabled"><span class="key">${o.key}.</span><span>${escapeHtml(o.text)}</span></div>`;
     }).join("")}</div>`;
   }
   let fbHtml="";
-  if(t==="qa"){
+  if(hide){
+    fbHtml=`<div class="feedback" style="display:block"><button class="btn btn-ghost" id="revealBtn">显示答案</button></div>`;
+  }else if(t==="qa"){
     fbHtml=`<div class="feedback ok" style="display:block"><div><b>参考答案要点：</b></div><div class="explain">${escapeHtml(q.explain||"（原表未提供要点）")}</div></div>`;
   }else{
     fbHtml=`<div class="feedback ok" style="display:block"><div><b>正确答案：${rightText}</b></div>
@@ -358,32 +500,40 @@ function renderReviewCard(){
   <div class="card">
     <div class="muted">第 ${r.idx+1} / ${r.pool.length} 题</div>
     <div class="progress"><i style="width:${r.idx/r.pool.length*100}%"></i></div>
-    <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span></div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>
+      <button class="star-btn ${inFav(t,q)?"on":""}" id="favBtn">${inFav(t,q)?"★":"☆"} 收藏</button>
+    </div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     ${optsHtml}
     ${fbHtml}
     <div class="row">
       <button class="btn btn-ghost" id="rPrev">上一题</button>
       <button class="btn btn-primary" id="rNext">${r.idx===r.pool.length-1?"完成":"下一题"}</button>
+      <button class="btn btn-ghost" id="rHide">${hide?"显示答案":"隐藏答案"}</button>
       <button class="btn btn-ghost" id="rQuit">退出背题</button>
     </div>
     <div class="row">
-      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${r.pool.length}" value="${r.idx+1}" style="width:70px;padding:6px;border:1px solid var(--line);border-radius:8px"> 题</label>
+      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${r.pool.length}" value="${r.idx+1}" style="width:70px"> 题</label>
       <button class="btn btn-ghost" id="jumpBtn">跳转</button>
     </div>
     <div class="qnav">${r.pool.map((x,i)=>`<button class="qnav-btn ${i===r.idx?"qnav-cur":""}" data-i="${i}">${i+1}</button>`).join("")}</div>
   </div>`;
-  document.getElementById("rQuit").onclick=()=>{state.review=null;renderReview();};
+  document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderReviewCard();};
+  document.getElementById("rQuit").onclick=()=>{state.review=null;saveProgress();renderReview();};
+  const reveal=document.getElementById("revealBtn");
+  if(reveal)reveal.onclick=()=>{r.hide=false;saveProgress();renderReviewCard();};
+  document.getElementById("rHide").onclick=()=>{r.hide=!r.hide;saveProgress();renderReviewCard();};
   const prev=document.getElementById("rPrev"),next=document.getElementById("rNext");
-  if(prev)prev.onclick=()=>{if(r.idx>0){r.idx--;renderReviewCard();}};
-  if(next)next.onclick=()=>{if(r.idx===r.pool.length-1){renderReviewCard();}else{r.idx++;renderReviewCard();}};
+  if(prev)prev.onclick=()=>{if(r.idx>0){r.idx--;saveProgress();renderReviewCard();}};
+  if(next)next.onclick=()=>{if(r.idx===r.pool.length-1){renderReviewCard();}else{r.idx++;saveProgress();renderReviewCard();}};
   document.getElementById("jumpBtn").onclick=()=>{
     const n=parseInt(document.getElementById("jumpNo").value);
-    if(n>=1&&n<=r.pool.length){r.idx=n-1;renderReviewCard();}
+    if(n>=1&&n<=r.pool.length){r.idx=n-1;saveProgress();renderReviewCard();}
   };
-  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{r.idx=parseInt(b.dataset.i);renderReviewCard();});
+  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{r.idx=parseInt(b.dataset.i);saveProgress();renderReviewCard();});
 }
-function backToReviewHome(){state.review=null;renderReview();}
+function backToReviewHome(){state.review=null;saveProgress();renderReview();}
 
 /* ---------- 模拟考试 ---------- */
 function renderExamHome(){
@@ -394,24 +544,19 @@ function renderExamHome(){
     <div class="row" style="margin-top:12px">
       ${Object.keys(EXAM_PLAN).map(t=>`<span class="chip">${TYPE_NAME[t]} ${EXAM_PLAN[t]} 题 · 每题 ${SCORE[t]} 分</span>`).join("")}
     </div>
-    <p class="muted" style="margin-top:12px">共 ${total} 题，满分 100 分。多选需全部选对方可得分；简答提交后对照要点自评。题目每次随机抽取。</p>
+    <p class="muted" style="margin-top:12px">共 ${total} 题，满分 100 分。多选需全部选对方可得分；简答提交后对照要点自评。题目每次随机抽取，可随时交卷。</p>
     <div class="row"><button class="btn btn-primary" id="startExam">开始考试</button></div>
   </div>`;
   document.getElementById("startExam").onclick=()=>{
     const paper=[];
-    Object.keys(EXAM_PLAN).forEach(t=>{
-      shuffle(DATA[t]).slice(0,EXAM_PLAN[t]).forEach(q=>paper.push({t,q}));
-    });
-    state.exam={paper,idx:0,answers:{},qaEval:{},submitted:false};
-    renderExamCard();
+    Object.keys(EXAM_PLAN).forEach(t=>{shuffle(DATA[t]).slice(0,EXAM_PLAN[t]).forEach(q=>paper.push({t,q}));});
+    state.exam={paper,idx:0,answers:{},qaEval:{},submitted:false};saveProgress();renderExamCard();
   };
 }
-
 function renderExamCard(){
   const e=state.exam;
   const {t,q}=e.paper[e.idx];
   const sel=e.answers[qkey(t,q)]||[];
-  const answered=sel.length>0||(t==="qa"&&(e.answers[qkey(t,q)+"_text"]||"").trim());
   app.innerHTML=`
   <div class="card">
     <div class="muted">第 ${e.idx+1} / ${e.paper.length} 题</div>
@@ -422,7 +567,8 @@ function renderExamCard(){
     ${t==="qa"?`<textarea class="qa-box" id="qaText" placeholder="输入你的作答">${escapeHtml(e.answers[qkey(t,q)+"_text"]||"")}</textarea>`:""}
     <div class="row">
       <button class="btn btn-ghost" id="ePrev">上一题</button>
-      <button class="btn btn-ghost" id="eNext">${e.idx===e.paper.length-1?"交卷":"下一题"}</button>
+      ${e.idx!==e.paper.length-1?`<button class="btn btn-ghost" id="eNext">下一题</button>`:""}
+      <button class="btn btn-primary" id="eSubmit">交卷</button>
       <button class="btn btn-ghost" id="eQuit">退出考试</button>
     </div>
     <div class="qnav">${e.paper.map((x,i)=>{
@@ -432,15 +578,27 @@ function renderExamCard(){
     }).join("")}</div>
   </div>`;
   bindOptionsExam(t,q,sel);
-  document.querySelectorAll("#app .qnav-btn").forEach(b=>b.onclick=()=>{e.idx=parseInt(b.dataset.i);renderExamCard();});
-  if(t==="qa")document.getElementById("qaText").oninput=ev=>{e.answers[qkey(t,q)+"_text"]=ev.target.value;};
-  document.getElementById("ePrev").onclick=()=>{if(e.idx>0){e.idx--;renderExamCard();}};
-  document.getElementById("eQuit").onclick=()=>{if(confirm("确定退出本次考试？作答不会保存。")){state.exam=null;renderExamHome();}};
-  document.getElementById("eNext").onclick=()=>{
+  document.querySelectorAll("#app .qnav-btn").forEach(b=>b.onclick=()=>{e.idx=parseInt(b.dataset.i);saveProgress();renderExamCard();});
+  if(t==="qa")document.getElementById("qaText").oninput=ev=>{e.answers[qkey(t,q)+"_text"]=ev.target.value;saveProgress();};
+  document.getElementById("ePrev").onclick=()=>{if(e.idx>0){e.idx--;saveProgress();renderExamCard();}};
+  document.getElementById("eQuit").onclick=()=>{if(confirm("确定退出本次考试？作答进度将清除。")){state.exam=null;saveProgress();renderExamHome();}};
+  const next=document.getElementById("eNext");
+  if(next)next.onclick=()=>{
     if(t==="qa")e.answers[qkey(t,q)+"_text"]=document.getElementById("qaText").value;
-    if(e.idx===e.paper.length-1){submitExam();}
-    else{e.idx++;renderExamCard();}
+    e.idx++;saveProgress();renderExamCard();
   };
+  document.getElementById("eSubmit").onclick=()=>{
+    if(t==="qa")e.answers[qkey(t,q)+"_text"]=document.getElementById("qaText").value;
+    const u=unansweredCount(e);
+    if(u>0&&!confirm("还有 "+u+" 题未作答，确定交卷吗？未作答的题目将按答错处理并计入错题本。"))return;
+    submitExam();
+  };
+}
+function unansweredCount(e){
+  return e.paper.filter(({t,q})=>{
+    if(t==="qa")return !(e.answers[qkey(t,q)+"_text"]||"").trim();
+    return !(e.answers[qkey(t,q)]||[]).length;
+  }).length;
 }
 function bindOptionsExam(t,q,sel){
   document.querySelectorAll("#opts .opt").forEach(el=>{
@@ -448,12 +606,11 @@ function bindOptionsExam(t,q,sel){
       const k=el.dataset.key;
       let cur=state.exam.answers[qkey(t,q)]||[];
       if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}else{cur=[k];}
-      state.exam.answers[qkey(t,q)]=cur;
+      state.exam.answers[qkey(t,q)]=cur;saveProgress();
       document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
     };
   });
 }
-
 function submitExam(){
   const e=state.exam;
   let score=0,detail={single:{r:0,a:0},multi:{r:0,a:0},judge:{r:0,a:0},qa:{r:0,a:0}};
@@ -461,26 +618,27 @@ function submitExam(){
   e.paper.forEach(({t,q})=>{
     detail[t].a++;
     if(t==="qa"){
-      // 简答待自评，先不计入自动分；结果页处理
+      const ansText=(e.answers[qkey(t,q)+"_text"]||"").trim();
+      if(!ansText)recordResult(t,q,false); // 未作答的简答计入错题本
       return;
     }
     const sel=e.answers[qkey(t,q)]||[];
-    if(isCorrect(t,q,sel)){score+=SCORE[t];detail[t].r++;}
+    const correct=isCorrect(t,q,sel);
+    if(correct){score+=SCORE[t];detail[t].r++;}
     else{wrongList.push({t,q,sel});recordResult(t,q,false);}
+    recordAnswer(t,correct);
   });
   state.exam.autoScore=score;
   state.exam.wrongList=wrongList;
   state.exam.detail=detail;
   state.exam.submitted=true;
+  saveProgress();
   renderExamResult();
 }
-
 function renderExamResult(){
   const e=state.exam;
-  // 简答自评区
   const qaList=e.paper.filter(x=>x.t==="qa");
-  let qaScore=0;
-  const qaHtml=qaList.map(({t,q},i)=>{
+  const qaHtml=qaList.map(({t,q})=>{
     const ev=e.qaEval[qkey(t,q)];
     const ans=e.answers[qkey(t,q)+"_text"]||"";
     return `<div class="card" style="margin-bottom:10px">
@@ -493,7 +651,6 @@ function renderExamResult(){
           :`<span class="chip">${ev?`已计 ${SCORE[t]} 分`:"未得分"}</span>`}
       </div></div>`;
   }).join("");
-
   const obj=Object.keys(e.detail).map(t=>`${TYPE_NAME[t]} ${e.detail[t].r}/${e.detail[t].a}`).join("　");
   app.innerHTML=`
   <div class="card">
@@ -502,40 +659,36 @@ function renderExamResult(){
     <p class="muted" style="text-align:center">${obj}</p>
     <div class="row" style="justify-content:center">
       <button class="btn btn-ghost" id="saveHist">保存本次成绩</button>
-      <button class="btn btn-ghost" onclick="state.exam=null;renderExamHome()">返回</button>
+      <button class="btn btn-ghost" onclick="state.exam=null;saveProgress();renderExamHome()">返回</button>
     </div>
   </div>
   <h3 style="margin:14px 0 8px">简答自评（${qaList.length} 题）</h3>
   ${qaHtml}
   <h3 style="margin:14px 0 8px">客观题答错清单</h3>
   <div id="wrongBox"></div>`;
-
-  // 简答自评绑定
   document.querySelectorAll(".selfeval").forEach(box=>{
     const key=box.dataset.q;
     box.querySelectorAll("button").forEach(b=>b.onclick=()=>{
       e.qaEval[key]=b.dataset.v==="1";
       if(!e.qaEval[key])recordResultByKey(key,false);
-      renderExamResult();
+      recordAnswer("qa",e.qaEval[key]);
+      saveProgress();renderExamResult();
     });
   });
-  // 计算总分
   function refreshTotal(){
     let qa=0;Object.values(e.qaEval).forEach(v=>{if(v)qa+=SCORE.qa;});
     document.getElementById("finalScore").textContent=(e.autoScore+qa)+" 分";
   }
   refreshTotal();
-
   document.getElementById("saveHist").onclick=()=>{
     let qa=0;Object.values(e.qaEval).forEach(v=>{if(v)qa+=SCORE.qa;});
     const total=e.autoScore+qa;
     const hist=loadLS(LS_HIST,[]);
     hist.push({date:new Date().toLocaleString(),score:total,total:e.paper.length,obj:JSON.parse(JSON.stringify(e.detail))});
     saveLS(LS_HIST,hist);
-    alert("成绩已保存，可在成绩统计查看。");
-    state.exam=null;renderStats();
+    state.exam=null;saveProgress();
+    alert("成绩已保存，可在成绩统计查看。");renderStats();
   };
-  // 错题清单
   const wb=document.getElementById("wrongBox");
   wb.innerHTML=e.wrongList.length?e.wrongList.map(({t,q,sel})=>`
     <div class="card" style="margin-bottom:10px">
@@ -545,32 +698,72 @@ function renderExamResult(){
       ${q.explain?`<div class="explain"><b>解析：</b>${escapeHtml(q.explain)}</div>`:""}
     </div>`).join(""):`<div class="card muted">客观题全部答对，很棒！</div>`;
 }
-function recordResultByKey(key,correct){
-  const [t,no]=key.split("#");recordResult(t,{no:parseInt(no)},correct);
-}
+function recordResultByKey(key,correct){const [t,no]=key.split("#");recordResult(t,{no:parseInt(no)},correct);}
 
 /* ---------- 错题本 ---------- */
 function renderWrong(){
   const w=getWrong();
-  let pool=[];
-  Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)pool.push({t,q,count:w[t][noStr]});});});
-  if(!pool.length){app.innerHTML=`<div class="card muted">暂无错题，继续保持！</div>`;return;}
-  const rows=pool.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
+  let allPool=[];
+  Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)allPool.push({t,q,count:w[t][noStr]});});});
+  if(!allPool.length){app.innerHTML=`<div class="card muted">暂无错题，继续保持！</div>`;return;}
+  const existTypes=Object.keys(DATA).filter(t=>allPool.some(x=>x.t===t));
+  const filterPool=()=>{
+    const sel=selectedTypes("wtype");
+    return sel==="all"?allPool:allPool.filter(x=>sel.includes(x.t));
+  };
+  const rowsHtml=list=>list.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
     <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span>
     <span class="chip" style="margin-left:6px">已连续答对 ${x.count}/${WRONG_PASS} 次</span></div>
     <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
   app.innerHTML=`
   <div class="card">
-    <div class="muted">共 ${pool.length} 道错题；需连续答对 ${WRONG_PASS} 次后才会自动移出错题本，答错则重新计数。</div>
+    <div class="muted" id="wCount"></div>
+    <div class="row" style="align-items:center;flex-wrap:wrap">
+      <span class="muted">题型：</span>
+      <label><input type="checkbox" class="wtype" value="all" checked> 全部</label>
+      ${existTypes.map(t=>`<label><input type="checkbox" class="wtype" value="${t}"> ${TYPE_NAME[t]}</label>`).join("")}
+    </div>
     <div class="row"><button class="btn btn-primary" id="wStart">开始重练</button>
     <button class="btn btn-ghost" id="wClear">清空错题本</button></div>
   </div>
-  ${rows}`;
+  <div id="wRows"></div>`;
+  const boxes=[...document.querySelectorAll(".wtype")];
+  const allBox=boxes.find(b=>b.value==="all");
+  const refresh=()=>{const f=filterPool();document.getElementById("wCount").textContent=`共 ${f.length} 道错题；需连续答对 ${WRONG_PASS} 次后才会自动移出错题本，答错则重新计数。`;document.getElementById("wRows").innerHTML=rowsHtml(f);};
+  boxes.forEach(b=>b.onchange=()=>{
+    if(b===allBox&&b.checked){boxes.forEach(x=>{if(x!==allBox)x.checked=false;});}
+    else if(b!==allBox&&b.checked){allBox.checked=false;}
+    refresh();
+  });
+  refresh();
   document.getElementById("wStart").onclick=()=>{
-    state.wrongPractice={pool:shuffle(pool.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
-    renderPracticeCard("wrong");
+    const f=filterPool();
+    if(!f.length){alert("没有匹配的错题");return;}
+    state.wrongPractice={pool:shuffle(f.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
+    saveProgress();renderPracticeCard("wrong");
   };
-  document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});renderWrong();}};
+  document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});saveProgress();renderWrong();}};
+}
+
+/* ---------- 收藏 ---------- */
+function renderFav(){
+  const f=getFav();
+  let pool=[];
+  Object.keys(f).forEach(t=>f[t].forEach(no=>{const q=DATA[t].find(x=>x.no===no);if(q)pool.push({t,q});}));
+  if(!pool.length){app.innerHTML=`<div class="card muted">暂无收藏题目，做题时点「☆ 收藏」即可加入。</div>`;return;}
+  const rows=pool.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
+    <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span></div>
+    <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
+  app.innerHTML=`
+  <div class="card">
+    <div class="muted">共 ${pool.length} 道收藏题。</div>
+    <div class="row"><button class="btn btn-primary" id="fStart">开始练习收藏题</button></div>
+  </div>
+  ${rows}`;
+  document.getElementById("fStart").onclick=()=>{
+    state.favPractice={pool:shuffle(pool),idx:0,answers:{},results:{}};
+    saveProgress();renderPracticeCard("fav");
+  };
 }
 
 /* ---------- 成绩统计 ---------- */
@@ -579,6 +772,27 @@ function renderStats(){
   const w=getWrong();
   const wCount=Object.values(w).reduce((a,b)=>a+Object.keys(b).length,0);
   const avg=hist.length?(hist.reduce((a,h)=>a+h.score,0)/hist.length).toFixed(1):"—";
+  const rec=getRecord();
+  const bars=Object.keys(DATA).map(t=>{
+    const r=rec[t];const pct=r.total?Math.round(r.right/r.total*100):null;
+    const width=pct==null?0:pct;
+    return `<div class="bar-row">
+      <div class="bar-label">${TYPE_NAME[t]}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+      <div class="bar-val">${pct==null?"无记录":pct+"%"}</div>
+      <button class="btn btn-ghost" data-clear="${t}" style="padding:4px 10px;font-size:12px">清除</button>
+    </div>`;}).join("");
+  const trend=hist.slice(-10);
+  let trendSvg="";
+  if(trend.length>=2){
+    const W=560,H=120,pad=10;
+    const max=100;const pts=trend.map((h,i)=>{const x=pad+(W-2*pad)*(i/(trend.length-1));const y=H-pad-(H-2*pad)*(h.score/max);return [x,y];});
+    const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+    trendSvg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px;margin-top:10px">
+      ${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--blue)"/>`).join("")}
+      <path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2"/>
+    </svg>`;
+  }
   app.innerHTML=`
   <div class="stat-grid">
     <div class="stat"><div class="num">${hist.length}</div><div class="muted">考试次数</div></div>
@@ -587,15 +801,114 @@ function renderStats(){
     <div class="stat"><div class="num">${wCount}</div><div class="muted">当前错题</div></div>
   </div>
   <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3 style="margin:0">各题型正确率</h3>
+      <button class="btn btn-ghost" id="clearAllRec" style="padding:4px 10px;font-size:12px">清空全部正确率</button>
+    </div>${bars}
+    ${trend.length>=2?`<h3 style="margin-top:16px">最近成绩趋势</h3>${trendSvg}`:""}
+  </div>
+  <div class="card">
+    <div class="row">
+      <button class="btn btn-ghost" id="expBtn">导出备份（错题/成绩/记录/收藏）</button>
+      <button class="btn btn-ghost" id="impBtn">导入备份</button>
+      <button class="btn btn-ghost" id="bankBtn">导出题库对照表(CSV)</button>
+      <input type="file" id="impFile" accept="application/json" class="hidden">
+    </div>
+  </div>
+  <div class="card">
     ${hist.length?`<table><thead><tr><th>时间</th><th>得分</th><th>题数</th><th>题型答对情况</th></tr></thead><tbody>
       ${hist.slice().reverse().map(h=>`<tr><td>${h.date}</td><td><b>${h.score}</b></td><td>${h.total}</td><td class="muted">${Object.keys(h.obj).map(t=>`${TYPE_NAME[t]} ${h.obj[t].r}/${h.obj[t].a}`).join("，")}</td></tr>`).join("")}
     </tbody></table>`:`<div class="muted">暂无考试记录，先去完成一次模拟考试吧。</div>`}
   </div>`;
+  document.getElementById("expBtn").onclick=exportBackup;
+  document.getElementById("bankBtn").onclick=exportBank;
+  const impFile=document.getElementById("impFile");
+  document.getElementById("impBtn").onclick=()=>impFile.click();
+  impFile.onchange=()=>{if(impFile.files[0])importBackup(impFile.files[0]);};
+  document.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>{
+    const r=getRecord();r[b.dataset.clear]={total:0,right:0};saveLS(LS_RECORD,r);renderStats();
+  });
+  document.getElementById("clearAllRec").onclick=()=>{
+    if(confirm("确定清空全部题型的正确率记录？（不影响错题本、收藏与考试成绩）")){
+      saveLS(LS_RECORD,{single:{total:0,right:0},multi:{total:0,right:0},judge:{total:0,right:0},qa:{total:0,right:0}});
+      renderStats();
+    }
+  };
+}
+function exportBackup(){
+  const data={wrong:getWrong(),hist:loadLS(LS_HIST,[]),record:getRecord(),fav:getFav(),exportedAt:new Date().toLocaleString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="刷题备份.json";a.click();URL.revokeObjectURL(a.href);
+}
+function importBackup(file){
+  const reader=new FileReader();
+  reader.onload=()=>{try{
+    const d=JSON.parse(reader.result);
+    if(d.wrong)setWrong(d.wrong);
+    if(d.hist)saveLS(LS_HIST,d.hist);
+    if(d.record)saveLS(LS_RECORD,d.record);
+    if(d.fav)saveLS(LS_FAV,d.fav);
+    alert("导入成功");renderStats();
+  }catch(e){alert("文件格式不正确，导入失败");}};
+  reader.readAsText(file);
+}
+function exportBank(){
+  const rows=[["题型","题号","题干","选项","答案","解析"]];
+  Object.keys(DATA).forEach(t=>DATA[t].forEach(q=>{
+    const opts=q.options.map(o=>o.key+". "+o.text).join(" | ");
+    rows.push([TYPE_NAME[t],q.no,q.stem,opts,q.answer.join(","),q.explain||""]);
+  }));
+  const csv=rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="铣削刀具题库对照表.csv";a.click();URL.revokeObjectURL(a.href);
+}
+
+/* ---------- 键盘快捷键 ---------- */
+document.addEventListener("keydown",e=>{
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT"))return;
+  const k=e.key.toLowerCase();
+  if(state.view==="practice"||state.view==="wrong"||state.view==="fav")practiceKeys(k,e);
+  else if(state.view==="review")reviewKeys(k,e);
+  else if(state.view==="exam")examKeys(k,e);
+});
+function currentPractice(){
+  const ctx=state.view==="wrong"?"wrong":state.view==="fav"?"fav":"practice";
+  return {ctx,p:state[practiceStateName(ctx)]};
+}
+function clickOpt(key){const el=document.querySelector(`#opts .opt[data-key="${key}"]`);if(el)el.click();}
+function practiceKeys(k,e){
+  const {ctx,p}=currentPractice();if(!p)return;
+  if(["a","b","c","d"].includes(k)){clickOpt(k.toUpperCase());e.preventDefault();return;}
+  if(k==="1"){clickOpt("T");e.preventDefault();return;}
+  if(k==="2"){clickOpt("F");e.preventDefault();return;}
+  if(k==="arrowleft"){const prev=document.getElementById("pPrev");if(prev)prev.click();e.preventDefault();return;}
+  if(k==="arrowright"){
+    const n=document.getElementById("pNext");
+    if(n){n.click();}
+    else if(p.idx<p.pool.length-1){p.idx++;saveProgress();renderPracticeCard(ctx);}
+    e.preventDefault();return;
+  }
+  if(k==="enter"){const chk=document.getElementById("pCheck");if(chk)chk.click();else{const n=document.getElementById("pNext");if(n)n.click();}e.preventDefault();}
+}
+function reviewKeys(k,e){
+  if(k==="arrowleft"){const p=document.getElementById("rPrev");if(p)p.click();e.preventDefault();return;}
+  if(k==="arrowright"){const n=document.getElementById("rNext");if(n)n.click();e.preventDefault();return;}
+  if(k==="enter"){const rv=document.getElementById("revealBtn");if(rv)rv.click();else{const n=document.getElementById("rNext");if(n)n.click();}e.preventDefault();}
+}
+function examKeys(k,e){
+  if(["a","b","c","d"].includes(k)){clickOpt(k.toUpperCase());e.preventDefault();return;}
+  if(k==="1"){clickOpt("T");e.preventDefault();return;}
+  if(k==="2"){clickOpt("F");e.preventDefault();return;}
+  if(k==="arrowleft"){const p=document.getElementById("ePrev");if(p)p.click();e.preventDefault();return;}
+  if(k==="arrowright"){const n=document.getElementById("eNext");if(n)n.click();e.preventDefault();return;}
 }
 
 function escapeHtml(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+loadProgress();
 render();
 </script>
 </body>
 </html>
+<!-- （注：内容由AI生成） -->
