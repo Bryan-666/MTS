@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#3370FF">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>铣削刀具销售知识刷题</title>
 <style>
   :root{--blue:#3370FF;--bg:#F5F7FB;--card:#fff;--line:#E3E8F0;--txt:#1F2733;--sub:#6B7686;--green:#16A34A;--red:#E5484D;--amber:#F59E0B;--purple:#7C3AED;}
@@ -101,7 +105,7 @@ const DATA = {"single": [{"no": 1, "stem": "ISO 513 标准把被加工材料分�
 const TYPE_NAME = {single:"单项选择", multi:"多项选择", judge:"判断题", qa:"问答题"};
 const EXAM_PLAN = {single:15, multi:20, judge:10, qa:4};
 const SCORE = {single:2, multi:2, judge:1, qa:5};
-const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1";
+const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1";
 
 let state = {view:"practice"};
 
@@ -115,25 +119,37 @@ function getWrong(){
   ["single","multi","judge","qa"].forEach(t=>{
     if(Array.isArray(w[t])){w[t]=Object.fromEntries(w[t].map(n=>[String(n),0]));}
     if(!w[t]||typeof w[t]!=="object")w[t]={};
+    Object.keys(w[t]).forEach(k=>{
+      const v=w[t][k];
+      if(typeof v==="number")w[t][k]={c:v,w:0,t:0};
+      else if(!v||typeof v!=="object")w[t][k]={c:0,w:0,t:0};
+    });
   });
   return w;
 }
 function setWrong(w){saveLS(LS_WRONG,w);}
-function wrongCount(t,q){const w=getWrong();return (w[t]&&w[t][q.no]!=null)?w[t][q.no]:0;}
+function wrongInfo(t,q){const w=getWrong();const v=w[t]&&w[t][q.no];return v||{c:0,w:0,t:0};}
+function wrongCount(t,q){return wrongInfo(t,q).c;}
 function inWrong(t,q){const w=getWrong();return !!(w[t]&&w[t][q.no]!=null);}
 function recordResult(t,q,correct,ctx){
   const w=getWrong();if(!w[t])w[t]={};
   const key=String(q.no);
+  const now=Date.now();
   if(ctx==="wrong"){
-    // 错题本单独重练：答对累计，连续答对 3 次移除；答错清零
+    // 错题本单独重练：答对累计，连续答对 3 次移除；答错清零并累计答错次数
     if(correct){
-      const c=(w[t][key]||0)+1;
-      if(c>=WRONG_PASS)delete w[t][key]; else w[t][key]=c;
-    }else{ w[t][key]=0; }
+      const c=(w[t][key]?w[t][key].c:0)+1;
+      if(c>=WRONG_PASS)delete w[t][key];
+      else{w[t][key].c=c;w[t][key].t=now;}
+    }else{
+      const v=w[t][key]||{c:0,w:0,t:0};
+      v.c=0;v.w=(v.w||0)+1;v.t=now;w[t][key]=v;
+    }
   }else{
-    // 普通练习 / 收藏练习 / 考试：答对不进、不改动错题本；答错才加入
+    // 普通练习 / 收藏练习 / 考试：答对不进、不改动错题本；答错才加入并累计答错次数
     if(correct)return;
-    w[t][key]=0;
+    const v=w[t][key]||{c:0,w:0,t:0};
+    v.c=0;v.w=(v.w||0)+1;v.t=now;w[t][key]=v;
   }
   setWrong(w);
 }
@@ -147,6 +163,15 @@ function getRecord(){
 function recordAnswer(t,correct){
   if(correct===undefined)return;
   const r=getRecord();r[t].total++;if(correct)r[t].right++;saveLS(LS_RECORD,r);
+  const d=loadLS(LS_DAILY,{});const k=todayKey();
+  if(!d[k])d[k]={total:0,right:0};
+  d[k].total++;if(correct)d[k].right++;saveLS(LS_DAILY,d);
+}
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function dailySummary(){
+  const d=loadLS(LS_DAILY,{});const today=d[todayKey()]||{total:0,right:0};
+  const days=Object.keys(d).sort().slice(-7).reverse();
+  return {today,days,all:d};
 }
 function accuracy(t){const r=getRecord()[t];return r.total?Math.round(r.right/r.total*100):null;}
 
@@ -704,16 +729,24 @@ function recordResultByKey(key,correct){const [t,no]=key.split("#");recordResult
 function renderWrong(){
   const w=getWrong();
   let allPool=[];
-  Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)allPool.push({t,q,count:w[t][noStr]});});});
+  Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)allPool.push({t,q,info:w[t][noStr]});});});
   if(!allPool.length){app.innerHTML=`<div class="card muted">暂无错题，继续保持！</div>`;return;}
   const existTypes=Object.keys(DATA).filter(t=>allPool.some(x=>x.t===t));
+  const sortPool=list=>{
+    const mode=document.getElementById("wSort")?document.getElementById("wSort").value:"weak";
+    const arr=list.slice();
+    if(mode==="recent")arr.sort((a,b)=>b.info.t-a.info.t);
+    else arr.sort((a,b)=>a.info.c-b.info.c||a.info.t-b.info.t);
+    return arr;
+  };
   const filterPool=()=>{
     const sel=selectedTypes("wtype");
-    return sel==="all"?allPool:allPool.filter(x=>sel.includes(x.t));
+    return sortPool(sel==="all"?allPool:allPool.filter(x=>sel.includes(x.t)));
   };
-  const rowsHtml=list=>list.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
+  const rowsHtml=list=>list.map(x=>{const q=x.q;const hot=x.info.w>=2;return `<div class="card" style="margin-bottom:10px">
     <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span>
-    <span class="chip" style="margin-left:6px">已连续答对 ${x.count}/${WRONG_PASS} 次</span></div>
+    <span class="chip" style="margin-left:6px">已连续答对 ${x.info.c}/${WRONG_PASS} 次</span>
+    ${hot?'<span class="chip" style="margin-left:6px;border-color:var(--red);color:var(--red);background:#FCEEEE">高频易错</span>':""}</div>
     <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
   app.innerHTML=`
   <div class="card">
@@ -722,6 +755,10 @@ function renderWrong(){
       <span class="muted">题型：</span>
       <label><input type="checkbox" class="wtype" value="all" checked> 全部</label>
       ${existTypes.map(t=>`<label><input type="checkbox" class="wtype" value="${t}"> ${TYPE_NAME[t]}</label>`).join("")}
+      <label style="margin-left:auto">排序：<select id="wSort">
+        <option value="weak">最薄弱优先</option>
+        <option value="recent">最近练习优先</option>
+      </select></label>
     </div>
     <div class="row"><button class="btn btn-primary" id="wStart">开始重练</button>
     <button class="btn btn-ghost" id="wClear">清空错题本</button></div>
@@ -735,6 +772,7 @@ function renderWrong(){
     else if(b!==allBox&&b.checked){allBox.checked=false;}
     refresh();
   });
+  document.getElementById("wSort").onchange=refresh;
   refresh();
   document.getElementById("wStart").onclick=()=>{
     const f=filterPool();
@@ -773,13 +811,16 @@ function renderStats(){
   const wCount=Object.values(w).reduce((a,b)=>a+Object.keys(b).length,0);
   const avg=hist.length?(hist.reduce((a,h)=>a+h.score,0)/hist.length).toFixed(1):"—";
   const rec=getRecord();
+  const ds=dailySummary();
+  const todayAcc=ds.today.total?Math.round(ds.today.right/ds.today.total*100):null;
+  const daysRows=ds.days.map(k=>{const v=ds.all[k];const a=v.total?Math.round(v.right/v.total*100):0;return `<tr><td>${k}</td><td>${v.total}</td><td>${v.right}</td><td>${a}%</td></tr>`;}).join("");
   const bars=Object.keys(DATA).map(t=>{
     const r=rec[t];const pct=r.total?Math.round(r.right/r.total*100):null;
     const width=pct==null?0:pct;
     return `<div class="bar-row">
       <div class="bar-label">${TYPE_NAME[t]}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
-      <div class="bar-val">${pct==null?"无记录":pct+"%"}</div>
+      <div class="bar-val">${pct==null?"无记录":pct+"%（"+r.right+"/"+r.total+"）"}</div>
       <button class="btn btn-ghost" data-clear="${t}" style="padding:4px 10px;font-size:12px">清除</button>
     </div>`;}).join("");
   const trend=hist.slice(-10);
@@ -799,6 +840,14 @@ function renderStats(){
     <div class="stat"><div class="num">${avg}</div><div class="muted">平均分</div></div>
     <div class="stat"><div class="num">${hist.length?Math.max(...hist.map(h=>h.score)):"—"}</div><div class="muted">最高分</div></div>
     <div class="stat"><div class="num">${wCount}</div><div class="muted">当前错题</div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3 style="margin:0 0 10px">今日学习</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="num">${ds.today.total}</div><div class="muted">今日做题</div></div>
+      <div class="stat"><div class="num">${todayAcc==null?"—":todayAcc+"%"}</div><div class="muted">今日正确率</div></div>
+    </div>
+    ${daysRows?`<table style="margin-top:10px"><thead><tr><th>日期</th><th>题量</th><th>答对</th><th>正确率</th></tr></thead><tbody>${daysRows}</tbody></table>`:""}
   </div>
   <div class="card" style="margin-top:14px">
     <div class="row" style="justify-content:space-between;align-items:center">
@@ -882,7 +931,12 @@ function practiceKeys(k,e){
   if(["a","b","c","d"].includes(k)){clickOpt(k.toUpperCase());e.preventDefault();return;}
   if(k==="1"){clickOpt("T");e.preventDefault();return;}
   if(k==="2"){clickOpt("F");e.preventDefault();return;}
-  if(k==="arrowleft"){const prev=document.getElementById("pPrev");if(prev)prev.click();e.preventDefault();return;}
+  if(k==="arrowleft"){
+    const prev=document.getElementById("pPrev");
+    if(prev){prev.click();}
+    else if(p.idx>0){p.idx--;saveProgress();renderPracticeCard(ctx);}
+    e.preventDefault();return;
+  }
   if(k==="arrowright"){
     const n=document.getElementById("pNext");
     if(n){n.click();}
@@ -908,7 +962,7 @@ function escapeHtml(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"
 
 loadProgress();
 render();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
 </script>
 </body>
 </html>
-<!-- （注：内容由AI生成） -->
