@@ -54,6 +54,12 @@
   .score-big{font-size:40px;font-weight:bold;text-align:center;margin:10px 0;}
   .selfeval{display:flex;gap:10px;margin-top:10px;}
   .opt.disabled{pointer-events:none;}
+  .qnav{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;max-height:128px;overflow-y:auto;}
+  .qnav-btn{width:30px;height:30px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;font-size:12px;color:var(--txt);}
+  .qnav-btn.qnav-cur{border-color:var(--blue);background:#EEF3FF;font-weight:bold;}
+  .qnav-btn.qnav-done{border-color:var(--amber);color:var(--amber);}
+  .qnav-btn.qnav-ok{background:#EAF7EF;border-color:var(--green);color:var(--green);}
+  .qnav-btn.qnav-no{background:#FCEEEE;border-color:var(--red);color:var(--red);}
   @media(max-width:600px){.wrap{padding:10px;}header h1{font-size:17px;}}
 </style>
 </head>
@@ -131,7 +137,7 @@ function renderPractice(){
     let pool=[];
     (type==="all"?types:[type]).forEach(t=>{DATA[t].forEach(q=>pool.push({t,q}));});
     if(order==="random")pool=shuffle(pool);
-    state.practice={pool,idx:0,answers:{}};
+    state.practice={pool,idx:0,answers:{},results:{}};
     renderPracticeCard();
   };
 }
@@ -144,44 +150,67 @@ function renderPracticeCard(){
     return;
   }
   const {t,q}=p.pool[p.idx];
-  const sel=p.answers[qkey(t,q)]||[];
-  const answered=sel.length>0 || (t==="qa" && (p.answers[qkey(t,q)+"_text"]||"").trim());
+  const key=qkey(t,q);
+  const sel=(p.answers[key]||[]).slice();
+  const done=!!p.results[key];
+  const qaText=p.answers[key+"_text"]||"";
   app.innerHTML=`
   <div class="card">
     <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题</div>
     <div class="progress"><i style="width:${(p.idx)/p.pool.length*100}%"></i></div>
     <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span></div>
     <div class="stem">${escapeHtml(q.stem)}</div>
-    <div class="opts" id="opts">${renderOptions(t,q,sel,answered)}</div>
-    ${t==="qa"?`<textarea class="qa-box" id="qaText" placeholder="在此输入你的作答（可对照下方参考答案要点自评）">${escapeHtml(p.answers[qkey(t,q)+"_text"]||"")}</textarea>`:""}
+    <div class="opts" id="opts">${renderOptions(t,q,sel,done)}</div>
+    ${t==="qa"?`<textarea class="qa-box" id="qaText" ${done?"disabled":""} placeholder="在此输入你的作答（可对照下方参考答案要点自评）">${escapeHtml(qaText)}</textarea>`:""}
     <div class="feedback" id="fb"></div>
     <div class="row">
-      ${!answered?`<button class="btn btn-primary" id="pCheck">提交答案</button>`:`<button class="btn btn-ghost" id="pPrev">上一题</button><button class="btn btn-primary" id="pNext">${p.idx===p.pool.length-1?"完成":"下一题"}</button>`}
+      ${!done?`<button class="btn btn-primary" id="pCheck">提交答案</button>`:`<button class="btn btn-ghost" id="pPrev">上一题</button><button class="btn btn-primary" id="pNext">${p.idx===p.pool.length-1?"完成":"下一题"}</button>`}
       <button class="btn btn-ghost" id="pQuit">退出练习</button>
     </div>
+    <div class="row">
+      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${p.pool.length}" value="${p.idx+1}" style="width:70px;padding:6px;border:1px solid var(--line);border-radius:8px"> 题</label>
+      <button class="btn btn-ghost" id="jumpBtn">跳转</button>
+    </div>
+    <div class="qnav">${p.pool.map((x,i)=>{
+      const k2=qkey(x.t,x.q);let c="";
+      const r=p.results[k2];
+      if(r)c=r.correct?"qnav-ok":"qnav-no";
+      else if((p.answers[k2]||[]).length||(p.answers[k2+"_text"]||"").trim())c="qnav-done";
+      return `<button class="qnav-btn ${c} ${i===p.idx?"qnav-cur":""}" data-i="${i}">${i+1}</button>`;
+    }).join("")}</div>
   </div>`;
 
-  bindOptions(t,q,sel);
-  if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[qkey(t,q)+"_text"]=e.target.value;};}
+  bindOptions(t,q,sel,done);
+  if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;};}
   document.getElementById("pQuit").onclick=()=>{state.practice=null;renderPractice();};
+
+  if(done){
+    const r=p.results[key];
+    if(t==="qa")renderQaFeedback(t,q,key,r);
+    else showChoiceFeedback(t,q,r.sel,r.correct);
+  }
+
   const chk=document.getElementById("pCheck");
   if(chk)chk.onclick=()=>{
     if(t==="qa"){
-      p.answers[qkey(t,q)+"_text"]=document.getElementById("qaText").value;
-      showQaFeedback(t,q,false);
+      p.answers[key+"_text"]=document.getElementById("qaText").value;
+      p.results[key]={self:undefined};
     }else{
-      const correct=isCorrect(t,q,sel);
-      showChoiceFeedback(t,q,sel,correct);
+      const curSel=(p.answers[key]||[]).slice();
+      const correct=isCorrect(t,q,curSel);
+      p.results[key]={correct,sel:curSel};
       if(correct)toggleWrong(t,q,false); else toggleWrong(t,q,true);
     }
-    bindNav();
+    renderPracticeCard();
   };
-  bindNav();
-  function bindNav(){
-    const prev=document.getElementById("pPrev"),next=document.getElementById("pNext");
-    if(prev)prev.onclick=()=>{p.idx--;renderPracticeCard();};
-    if(next)next.onclick=()=>{p.idx++;renderPracticeCard();};
-  }
+  const prev=document.getElementById("pPrev"),next=document.getElementById("pNext");
+  if(prev)prev.onclick=()=>{if(p.idx>0){p.idx--;renderPracticeCard();}};
+  if(next)next.onclick=()=>{if(p.idx===p.pool.length-1){renderPracticeCard();}else{p.idx++;renderPracticeCard();}};
+  document.getElementById("jumpBtn").onclick=()=>{
+    const n=parseInt(document.getElementById("jumpNo").value);
+    if(n>=1&&n<=p.pool.length){p.idx=n-1;renderPracticeCard();}
+  };
+  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{p.idx=parseInt(b.dataset.i);renderPracticeCard();});
 }
 
 function renderOptions(t,q,sel,disabled){
@@ -191,11 +220,12 @@ function renderOptions(t,q,sel,disabled){
       <span class="key">${o.key}.</span><span>${escapeHtml(o.text)}</span></div>`;
   }).join("");
 }
-function bindOptions(t,q,sel){
+function bindOptions(t,q,sel,disabled){
   document.querySelectorAll("#opts .opt").forEach(el=>{
+    if(disabled){el.classList.add("disabled");return;}
     el.onclick=()=>{
       const k=el.dataset.key;
-      const cur=state.practice.answers[qkey(t,q)]||[];
+      let cur=state.practice.answers[qkey(t,q)]||[];
       if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}
       else{cur=[k];}
       state.practice.answers[qkey(t,q)]=cur;
@@ -221,19 +251,24 @@ function showChoiceFeedback(t,q,sel,correct){
     else if(sel.includes(k))el.classList.add("wrong");
   });
 }
-function showQaFeedback(t,q,evaluated){
+function renderQaFeedback(t,q,key,r){
   const fb=document.getElementById("fb");
   fb.style.display="block";
   fb.className="feedback ok";
-  fb.innerHTML=`<div><b>参考答案要点：</b></div><div class="explain">${escapeHtml(q.explain||"（原表未提供要点）")}</div>
-    <div class="selfeval">
+  let selfHtml;
+  if(r.self===undefined){
+    selfHtml=`<div class="selfeval">
       <button class="btn btn-green" data-e="1">我答对了</button>
-      <button class="btn btn-red" data-e="0">加入错题</button>
-    </div>`;
+      <button class="btn btn-red" data-e="0">加入错题</button></div>`;
+  }else{
+    selfHtml=`<span class="chip">${r.self?"已计为答对":"已加入错题"}</span>`;
+  }
+  fb.innerHTML=`<div><b>参考答案要点：</b></div><div class="explain">${escapeHtml(q.explain||"（原表未提供要点）")}</div>${selfHtml}`;
   fb.querySelectorAll("button").forEach(b=>b.onclick=()=>{
-    const add=b.dataset.e==="0";
-    toggleWrong(t,q,add);
-    fb.querySelector(".selfeval").remove();
+    const ok=b.dataset.e==="1";
+    state.practice.results[key].self=ok;
+    toggleWrong(t,q,!ok);
+    renderPracticeCard();
   });
 }
 
@@ -277,8 +312,14 @@ function renderExamCard(){
       <button class="btn btn-ghost" id="eNext">${e.idx===e.paper.length-1?"交卷":"下一题"}</button>
       <button class="btn btn-ghost" id="eQuit">退出考试</button>
     </div>
+    <div class="qnav">${e.paper.map((x,i)=>{
+      const k2=qkey(x.t,x.q);
+      const ans=(e.answers[k2]||[]).length||(e.answers[k2+"_text"]||"").trim();
+      return `<button class="qnav-btn ${ans?"qnav-done":""} ${i===e.idx?"qnav-cur":""}" data-i="${i}">${i+1}</button>`;
+    }).join("")}</div>
   </div>`;
   bindOptionsExam(t,q,sel);
+  document.querySelectorAll("#app .qnav-btn").forEach(b=>b.onclick=()=>{e.idx=parseInt(b.dataset.i);renderExamCard();});
   if(t==="qa")document.getElementById("qaText").oninput=ev=>{e.answers[qkey(t,q)+"_text"]=ev.target.value;};
   document.getElementById("ePrev").onclick=()=>{if(e.idx>0){e.idx--;renderExamCard();}};
   document.getElementById("eQuit").onclick=()=>{if(confirm("确定退出本次考试？作答不会保存。")){state.exam=null;renderExamHome();}};
@@ -292,7 +333,7 @@ function bindOptionsExam(t,q,sel){
   document.querySelectorAll("#opts .opt").forEach(el=>{
     el.onclick=()=>{
       const k=el.dataset.key;
-      const cur=state.exam.answers[qkey(t,q)]||[];
+      let cur=state.exam.answers[qkey(t,q)]||[];
       if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}else{cur=[k];}
       state.exam.answers[qkey(t,q)]=cur;
       document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
@@ -440,4 +481,3 @@ render();
 </script>
 </body>
 </html>
-<!-- （注：内容由AI生成） -->
