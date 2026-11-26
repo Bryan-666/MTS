@@ -125,15 +125,16 @@ document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
 });
 
 function render(){
-  if(state.view==="practice"){ state.practice?renderPracticeCard():renderPractice(); }
+  if(state.view==="practice"){ state.practice?renderPracticeCard("practice"):renderPractice(); }
   else if(state.view==="review"){ state.review?renderReviewCard():renderReview(); }
   else if(state.view==="exam"){ (state.exam&&!state.exam.submitted)?renderExamCard():renderExamHome(); }
-  else if(state.view==="wrong") renderWrong();
+  else if(state.view==="wrong"){ state.wrongPractice?renderPracticeCard("wrong"):renderWrong(); }
   else if(state.view==="stats") renderStats();
 }
 
 /* ---------- 刷题练习 ---------- */
-function backToPracticeHome(){state.practice=null;renderPractice();}
+function practiceStateName(ctx){return ctx==="wrong"?"wrongPractice":"practice";}
+function backToPracticeHome(ctx){ctx=ctx||"practice";state[practiceStateName(ctx)]=null; if(ctx==="wrong")renderWrong(); else renderPractice();}
 function renderPractice(){
   const types=Object.keys(DATA);
   app.innerHTML=`
@@ -162,15 +163,17 @@ function renderPractice(){
     (type==="all"?types:[type]).forEach(t=>{DATA[t].forEach(q=>pool.push({t,q}));});
     if(order==="random")pool=shuffle(pool);
     state.practice={pool,idx:0,answers:{},results:{}};
-    renderPracticeCard();
+    renderPracticeCard("practice");
   };
 }
 
-function renderPracticeCard(){
-  const p=state.practice;
+function renderPracticeCard(ctx){
+  ctx=ctx||"practice";
+  const sName=practiceStateName(ctx);
+  const p=state[sName];
   if(!p||p.idx>=p.pool.length){
     app.innerHTML=`<div class="card"><h3>练习完成</h3><p class="muted">共 ${p?p.pool.length:0} 题。可在错题本回顾答错题目。</p>
-      <div class="row"><button class="btn btn-ghost" onclick="backToPracticeHome()">返回练习</button></div></div>`;
+      <div class="row"><button class="btn btn-ghost" onclick="backToPracticeHome('${ctx}')">返回练习</button></div></div>`;
     return;
   }
   const {t,q}=p.pool[p.idx];
@@ -180,9 +183,9 @@ function renderPracticeCard(){
   const qaText=p.answers[key+"_text"]||"";
   app.innerHTML=`
   <div class="card">
-    <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题</div>
+    <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题${ctx==="wrong"?"（错题重练）":""}</div>
     <div class="progress"><i style="width:${(p.idx)/p.pool.length*100}%"></i></div>
-    <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span></div>
+    <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>${ctx==="wrong"?'<span class="chip" style="margin-left:6px">错题重练</span>':""}</div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     <div class="opts" id="opts">${renderOptions(t,q,sel,done)}</div>
     ${t==="qa"?`<textarea class="qa-box" id="qaText" ${done?"disabled":""} placeholder="在此输入你的作答（可对照下方参考答案要点自评）">${escapeHtml(qaText)}</textarea>`:""}
@@ -204,13 +207,13 @@ function renderPracticeCard(){
     }).join("")}</div>
   </div>`;
 
-  bindOptions(t,q,sel,done);
+  bindOptions(t,q,sel,done,p);
   if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;};}
-  document.getElementById("pQuit").onclick=()=>{state.practice=null;renderPractice();};
+  document.getElementById("pQuit").onclick=()=>{state[sName]=null; if(ctx==="wrong")renderWrong(); else renderPractice();};
 
   if(done){
     const r=p.results[key];
-    if(t==="qa")renderQaFeedback(t,q,key,r);
+    if(t==="qa")renderQaFeedback(t,q,key,r,p,ctx);
     else showChoiceFeedback(t,q,r.sel,r.correct);
   }
 
@@ -225,16 +228,16 @@ function renderPracticeCard(){
       p.results[key]={correct,sel:curSel};
       recordResult(t,q,correct);
     }
-    renderPracticeCard();
+    renderPracticeCard(ctx);
   };
   const prev=document.getElementById("pPrev"),next=document.getElementById("pNext");
-  if(prev)prev.onclick=()=>{if(p.idx>0){p.idx--;renderPracticeCard();}};
-  if(next)next.onclick=()=>{if(p.idx===p.pool.length-1){renderPracticeCard();}else{p.idx++;renderPracticeCard();}};
+  if(prev)prev.onclick=()=>{if(p.idx>0){p.idx--;renderPracticeCard(ctx);}};
+  if(next)next.onclick=()=>{if(p.idx===p.pool.length-1){renderPracticeCard(ctx);}else{p.idx++;renderPracticeCard(ctx);}};
   document.getElementById("jumpBtn").onclick=()=>{
     const n=parseInt(document.getElementById("jumpNo").value);
-    if(n>=1&&n<=p.pool.length){p.idx=n-1;renderPracticeCard();}
+    if(n>=1&&n<=p.pool.length){p.idx=n-1;renderPracticeCard(ctx);}
   };
-  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{p.idx=parseInt(b.dataset.i);renderPracticeCard();});
+  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{p.idx=parseInt(b.dataset.i);renderPracticeCard(ctx);});
 }
 
 function renderOptions(t,q,sel,disabled){
@@ -244,15 +247,15 @@ function renderOptions(t,q,sel,disabled){
       <span class="key">${o.key}.</span><span>${escapeHtml(o.text)}</span></div>`;
   }).join("");
 }
-function bindOptions(t,q,sel,disabled){
+function bindOptions(t,q,sel,disabled,p){
   document.querySelectorAll("#opts .opt").forEach(el=>{
     if(disabled){el.classList.add("disabled");return;}
     el.onclick=()=>{
       const k=el.dataset.key;
-      let cur=state.practice.answers[qkey(t,q)]||[];
+      let cur=p.answers[qkey(t,q)]||[];
       if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}
       else{cur=[k];}
-      state.practice.answers[qkey(t,q)]=cur;
+      p.answers[qkey(t,q)]=cur;
       document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
     };
   });
@@ -275,7 +278,7 @@ function showChoiceFeedback(t,q,sel,correct){
     else if(sel.includes(k))el.classList.add("wrong");
   });
 }
-function renderQaFeedback(t,q,key,r){
+function renderQaFeedback(t,q,key,r,p,ctx){
   const fb=document.getElementById("fb");
   fb.style.display="block";
   fb.className="feedback ok";
@@ -290,9 +293,9 @@ function renderQaFeedback(t,q,key,r){
   fb.innerHTML=`<div><b>参考答案要点：</b></div><div class="explain">${escapeHtml(q.explain||"（原表未提供要点）")}</div>${selfHtml}`;
   fb.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     const ok=b.dataset.e==="1";
-    state.practice.results[key].self=ok;
+    p.results[key].self=ok;
     recordResult(t,q,ok);
-    renderPracticeCard();
+    renderPracticeCard(ctx);
   });
 }
 
@@ -564,8 +567,8 @@ function renderWrong(){
   </div>
   ${rows}`;
   document.getElementById("wStart").onclick=()=>{
-    state.practice={pool:shuffle(pool.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{},fromWrong:true};
-    renderPracticeCard();
+    state.wrongPractice={pool:shuffle(pool.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
+    renderPracticeCard("wrong");
   };
   document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});renderWrong();}};
 }
@@ -596,4 +599,3 @@ render();
 </script>
 </body>
 </html>
-<!-- （注：内容由AI生成） -->
