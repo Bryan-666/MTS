@@ -69,6 +69,7 @@
     <h1>铣削刀具销售知识刷题</h1>
     <nav id="nav">
       <button data-view="practice" class="active">刷题练习</button>
+      <button data-view="review">背题模式</button>
       <button data-view="exam">模拟考试</button>
       <button data-view="wrong">错题本</button>
       <button data-view="stats">成绩统计</button>
@@ -103,13 +104,15 @@ document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
 });
 
 function render(){
-  if(state.view==="practice") renderPractice();
-  else if(state.view==="exam") renderExamHome();
+  if(state.view==="practice"){ state.practice?renderPracticeCard():renderPractice(); }
+  else if(state.view==="review"){ state.review?renderReviewCard():renderReview(); }
+  else if(state.view==="exam"){ (state.exam&&!state.exam.submitted)?renderExamCard():renderExamHome(); }
   else if(state.view==="wrong") renderWrong();
   else if(state.view==="stats") renderStats();
 }
 
 /* ---------- 刷题练习 ---------- */
+function backToPracticeHome(){state.practice=null;renderPractice();}
 function renderPractice(){
   const types=Object.keys(DATA);
   app.innerHTML=`
@@ -146,7 +149,7 @@ function renderPracticeCard(){
   const p=state.practice;
   if(!p||p.idx>=p.pool.length){
     app.innerHTML=`<div class="card"><h3>练习完成</h3><p class="muted">共 ${p?p.pool.length:0} 题。可在错题本回顾答错题目。</p>
-      <div class="row"><button class="btn btn-ghost" onclick="renderPractice()">返回练习</button></div></div>`;
+      <div class="row"><button class="btn btn-ghost" onclick="backToPracticeHome()">返回练习</button></div></div>`;
     return;
   }
   const {t,q}=p.pool[p.idx];
@@ -271,6 +274,92 @@ function renderQaFeedback(t,q,key,r){
     renderPracticeCard();
   });
 }
+
+/* ---------- 背题模式 ---------- */
+function renderReview(){
+  const types=Object.keys(DATA);
+  app.innerHTML=`
+  <div class="card">
+    <div class="muted">背题模式：直接展示正确答案与解析，无需作答，可逐题浏览。</div>
+    <div class="row">
+      <label>题型：
+        <select id="rType">
+          <option value="all">全部</option>
+          ${types.map(t=>`<option value="${t}">${TYPE_NAME[t]}（${DATA[t].length}）</option>`).join("")}
+        </select>
+      </label>
+      <label>顺序：
+        <select id="rOrder">
+          <option value="seq">顺序</option>
+          <option value="random">随机</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="rStart">开始背题</button>
+    </div>
+  </div>`;
+  document.getElementById("rStart").onclick=()=>{
+    const type=document.getElementById("rType").value;
+    const order=document.getElementById("rOrder").value;
+    let pool=[];
+    (type==="all"?types:[type]).forEach(t=>{DATA[t].forEach(q=>pool.push({t,q}));});
+    if(order==="random")pool=shuffle(pool);
+    state.review={pool,idx:0};
+    renderReviewCard();
+  };
+}
+function renderReviewCard(){
+  const r=state.review;
+  if(!r||r.idx>=r.pool.length){
+    app.innerHTML=`<div class="card"><h3>背题完成</h3><p class="muted">共 ${r?r.pool.length:0} 题。</p>
+      <div class="row"><button class="btn btn-ghost" onclick="backToReviewHome()">返回背题</button></div></div>`;
+    return;
+  }
+  const {t,q}=r.pool[r.idx];
+  const rightText=t==="judge"?(q.answer[0]==="T"?"√ 正确":"× 错误"):q.answer.join("、");
+  let optsHtml="";
+  if(q.options.length){
+    optsHtml=`<div class="opts">${q.options.map(o=>{
+      const ok=q.answer.includes(o.key);
+      return `<div class="opt ${ok?"correct":""} disabled"><span class="key">${o.key}.</span><span>${escapeHtml(o.text)}</span></div>`;
+    }).join("")}</div>`;
+  }
+  let fbHtml="";
+  if(t==="qa"){
+    fbHtml=`<div class="feedback ok" style="display:block"><div><b>参考答案要点：</b></div><div class="explain">${escapeHtml(q.explain||"（原表未提供要点）")}</div></div>`;
+  }else{
+    fbHtml=`<div class="feedback ok" style="display:block"><div><b>正确答案：${rightText}</b></div>
+      ${q.explain?`<div class="explain"><b>解析：</b>${escapeHtml(q.explain)}</div>`:""}</div>`;
+  }
+  app.innerHTML=`
+  <div class="card">
+    <div class="muted">第 ${r.idx+1} / ${r.pool.length} 题</div>
+    <div class="progress"><i style="width:${r.idx/r.pool.length*100}%"></i></div>
+    <div><span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span></div>
+    <div class="stem">${escapeHtml(q.stem)}</div>
+    ${optsHtml}
+    ${fbHtml}
+    <div class="row">
+      <button class="btn btn-ghost" id="rPrev">上一题</button>
+      <button class="btn btn-primary" id="rNext">${r.idx===r.pool.length-1?"完成":"下一题"}</button>
+      <button class="btn btn-ghost" id="rQuit">退出背题</button>
+    </div>
+    <div class="row">
+      <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${r.pool.length}" value="${r.idx+1}" style="width:70px;padding:6px;border:1px solid var(--line);border-radius:8px"> 题</label>
+      <button class="btn btn-ghost" id="jumpBtn">跳转</button>
+    </div>
+    <div class="qnav">${r.pool.map((x,i)=>`<button class="qnav-btn ${i===r.idx?"qnav-cur":""}" data-i="${i}">${i+1}</button>`).join("")}</div>
+  </div>`;
+  document.getElementById("rQuit").onclick=()=>{state.review=null;renderReview();};
+  const prev=document.getElementById("rPrev"),next=document.getElementById("rNext");
+  if(prev)prev.onclick=()=>{if(r.idx>0){r.idx--;renderReviewCard();}};
+  if(next)next.onclick=()=>{if(r.idx===r.pool.length-1){renderReviewCard();}else{r.idx++;renderReviewCard();}};
+  document.getElementById("jumpBtn").onclick=()=>{
+    const n=parseInt(document.getElementById("jumpNo").value);
+    if(n>=1&&n<=r.pool.length){r.idx=n-1;renderReviewCard();}
+  };
+  document.querySelectorAll(".qnav-btn").forEach(b=>b.onclick=()=>{r.idx=parseInt(b.dataset.i);renderReviewCard();});
+}
+function backToReviewHome(){state.review=null;renderReview();}
 
 /* ---------- 模拟考试 ---------- */
 function renderExamHome(){
