@@ -504,12 +504,19 @@ function renderReview(){
     </div>
   </div>`;
   bindCheckAll("rtype");
-  document.getElementById("rStart").onclick=()=>{
-    const sel=selectedTypes("rtype");
+  const startReview=(sel)=>{
     if(sel!=="all"&&!sel.length){alert("请至少选择题型");return;}
     const pool=buildPool(sel,document.getElementById("rOrder").value,"",0);
     state.review={pool,idx:0,hide:false};saveProgress();renderReviewCard();
   };
+  document.getElementById("rStart").onclick=()=>startReview(selectedTypes("rtype"));
+  // 双击某个题型：只选该题型并直接开始背题
+  const rBoxes=[...document.querySelectorAll(".rtype")];
+  rBoxes.forEach(b=>b.ondblclick=()=>{
+    rBoxes.forEach(x=>x.checked=false);
+    b.checked=true;
+    startReview(b.value);
+  });
 }
 function renderReviewCard(){
   const r=state.review;
@@ -759,11 +766,13 @@ function renderWrong(){
     const sel=selectedTypes("wtype");
     return sortPool(sel==="all"?allPool:allPool.filter(x=>sel.includes(x.t)));
   };
-  const rowsHtml=list=>list.map(x=>{const q=x.q;const hot=x.info.w>=2;return `<div class="card" style="margin-bottom:10px">
+  const rowsHtml=list=>list.map(x=>{const q=x.q;const hot=x.info.w>=2;const right=x.t==="judge"?(q.answer[0]==="T"?"√ 正确":"× 错误"):q.answer.join("、");return `<div class="card" style="margin-bottom:10px">
     <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span>
     <span class="chip" style="margin-left:6px">已连续答对 ${x.info.c}/${WRONG_PASS} 次</span>
     ${hot?'<span class="chip" style="margin-left:6px;border-color:var(--red);color:var(--red);background:#FCEEEE">高频易错</span>':""}</div>
-    <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
+    <div class="stem">${escapeHtml(q.stem)}</div>
+    <div class="explain"><b>正确答案：</b>${right||"（见参考答案要点）"}</div>
+    ${q.explain?`<div class="explain"><b>解析：</b>${escapeHtml(q.explain)}</div>`:""}</div>`;}).join("");
   app.innerHTML=`
   <div class="card">
     <div class="muted" id="wCount"></div>
@@ -796,6 +805,15 @@ function renderWrong(){
     state.wrongPractice={pool:shuffle(f.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
     saveProgress();renderPracticeCard("wrong");
   };
+  // 双击某个题型：只选该题型并直接开始重练
+  boxes.forEach(b=>b.ondblclick=()=>{
+    boxes.forEach(x=>x.checked=false);
+    b.checked=true;
+    const f=filterPool();
+    if(!f.length){alert("没有匹配的错题");return;}
+    state.wrongPractice={pool:shuffle(f.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
+    saveProgress();renderPracticeCard("wrong");
+  });
   document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});saveProgress();renderWrong();}};
 }
 
@@ -805,9 +823,11 @@ function renderFav(){
   let pool=[];
   Object.keys(f).forEach(t=>f[t].forEach(no=>{const q=DATA[t].find(x=>x.no===no);if(q)pool.push({t,q});}));
   if(!pool.length){app.innerHTML=`<div class="card muted">暂无收藏题目，做题时点「☆ 收藏」即可加入。</div>`;return;}
-  const rows=pool.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
+  const rows=pool.map(x=>{const q=x.q;const right=x.t==="judge"?(q.answer[0]==="T"?"√ 正确":"× 错误"):q.answer.join("、");return `<div class="card" style="margin-bottom:10px">
     <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span></div>
-    <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
+    <div class="stem">${escapeHtml(q.stem)}</div>
+    <div class="explain"><b>正确答案：</b>${right||"（见参考答案要点）"}</div>
+    ${q.explain?`<div class="explain"><b>解析：</b>${escapeHtml(q.explain)}</div>`:""}</div>`;}).join("");
   app.innerHTML=`
   <div class="card">
     <div class="muted">共 ${pool.length} 道收藏题。</div>
