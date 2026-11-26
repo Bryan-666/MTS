@@ -89,12 +89,33 @@ let state = {view:"practice"};
 
 function loadLS(k, def){try{return JSON.parse(localStorage.getItem(k))||def;}catch(e){return def;}}
 function saveLS(k,v){localStorage.setItem(k,JSON.stringify(v));}
-function getWrong(){return loadLS(LS_WRONG,{single:[],multi:[],judge:[],qa:[]});}
+const WRONG_PASS=3;
+function getWrong(){
+  let w=loadLS(LS_WRONG,{single:{},multi:{},judge:{},qa:{}});
+  ["single","multi","judge","qa"].forEach(t=>{
+    if(Array.isArray(w[t])){w[t]=Object.fromEntries(w[t].map(n=>[String(n),0]));}
+    if(!w[t]||typeof w[t]!=="object")w[t]={};
+  });
+  return w;
+}
 function setWrong(w){saveLS(LS_WRONG,w);}
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function qkey(t,q){return t+"#"+q.no;}
-function inWrong(t,q){const w=getWrong();return (w[t]||[]).includes(q.no);}
-function toggleWrong(t,q,add){const w=getWrong();if(!w[t])w[t]=[];if(add){if(!w[t].includes(q.no))w[t].push(q.no);}else{w[t]=w[t].filter(n=>n!==q.no);}setWrong(w);}
+function wrongCount(t,q){const w=getWrong();return (w[t]&&w[t][q.no]!=null)?w[t][q.no]:0;}
+function inWrong(t,q){const w=getWrong();return !!(w[t]&&w[t][q.no]!=null);}
+// correct=true：连续答对+1，达 WRONG_PASS 次移出错题本；correct=false：答错清零并保留在错题本
+function recordResult(t,q,correct){
+  const w=getWrong();if(!w[t])w[t]={};
+  const key=String(q.no);
+  if(correct){
+    const c=(w[t][key]||0)+1;
+    if(c>=WRONG_PASS)delete w[t][key]; else w[t][key]=c;
+  }else{
+    w[t][key]=0;
+  }
+  setWrong(w);
+}
+function toggleWrong(t,q,add){const w=getWrong();if(!w[t])w[t]={};const key=String(q.no);if(add)w[t][key]=0;else delete w[t][key];setWrong(w);}
 
 const app=document.getElementById("app");
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
@@ -202,7 +223,7 @@ function renderPracticeCard(){
       const curSel=(p.answers[key]||[]).slice();
       const correct=isCorrect(t,q,curSel);
       p.results[key]={correct,sel:curSel};
-      if(correct)toggleWrong(t,q,false); else toggleWrong(t,q,true);
+      recordResult(t,q,correct);
     }
     renderPracticeCard();
   };
@@ -270,7 +291,7 @@ function renderQaFeedback(t,q,key,r){
   fb.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     const ok=b.dataset.e==="1";
     state.practice.results[key].self=ok;
-    toggleWrong(t,q,!ok);
+    recordResult(t,q,ok);
     renderPracticeCard();
   });
 }
@@ -442,7 +463,7 @@ function submitExam(){
     }
     const sel=e.answers[qkey(t,q)]||[];
     if(isCorrect(t,q,sel)){score+=SCORE[t];detail[t].r++;}
-    else{wrongList.push({t,q,sel});toggleWrong(t,q,true);}
+    else{wrongList.push({t,q,sel});recordResult(t,q,false);}
   });
   state.exam.autoScore=score;
   state.exam.wrongList=wrongList;
@@ -491,7 +512,7 @@ function renderExamResult(){
     const key=box.dataset.q;
     box.querySelectorAll("button").forEach(b=>b.onclick=()=>{
       e.qaEval[key]=b.dataset.v==="1";
-      toggleWrongByKey(key,!e.qaEval[key]);
+      if(!e.qaEval[key])recordResultByKey(key,false);
       renderExamResult();
     });
   });
@@ -521,34 +542,39 @@ function renderExamResult(){
       ${q.explain?`<div class="explain"><b>解析：</b>${escapeHtml(q.explain)}</div>`:""}
     </div>`).join(""):`<div class="card muted">客观题全部答对，很棒！</div>`;
 }
-function toggleWrongByKey(key,add){
-  const [t,no]=key.split("#");toggleWrong(t,{no:parseInt(no)},add);
+function recordResultByKey(key,correct){
+  const [t,no]=key.split("#");recordResult(t,{no:parseInt(no)},correct);
 }
 
 /* ---------- 错题本 ---------- */
 function renderWrong(){
   const w=getWrong();
   let pool=[];
-  Object.keys(w).forEach(t=>{w[t].forEach(no=>{const q=DATA[t].find(x=>x.no===no);if(q)pool.push({t,q});});});
+  Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)pool.push({t,q,count:w[t][noStr]});});});
   if(!pool.length){app.innerHTML=`<div class="card muted">暂无错题，继续保持！</div>`;return;}
+  const rows=pool.map(x=>{const q=x.q;return `<div class="card" style="margin-bottom:10px">
+    <div><span class="tag ${x.t}">${TYPE_NAME[x.t]}</span><span class="muted">题号 ${q.no}</span>
+    <span class="chip" style="margin-left:6px">已连续答对 ${x.count}/${WRONG_PASS} 次</span></div>
+    <div class="stem">${escapeHtml(q.stem)}</div></div>`;}).join("");
   app.innerHTML=`
   <div class="card">
-    <div class="muted">共 ${pool.length} 道错题，可逐题重练；答对后自动移出错题本。</div>
+    <div class="muted">共 ${pool.length} 道错题；需连续答对 ${WRONG_PASS} 次后才会自动移出错题本，答错则重新计数。</div>
     <div class="row"><button class="btn btn-primary" id="wStart">开始重练</button>
     <button class="btn btn-ghost" id="wClear">清空错题本</button></div>
-  </div>`;
+  </div>
+  ${rows}`;
   document.getElementById("wStart").onclick=()=>{
-    state.practice={pool:shuffle(pool),idx:0,answers:{},results:{},fromWrong:true};
+    state.practice={pool:shuffle(pool.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{},fromWrong:true};
     renderPracticeCard();
   };
-  document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:[],multi:[],judge:[],qa:[]});renderWrong();}};
+  document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});renderWrong();}};
 }
 
 /* ---------- 成绩统计 ---------- */
 function renderStats(){
   const hist=loadLS(LS_HIST,[]);
   const w=getWrong();
-  const wCount=Object.values(w).reduce((a,b)=>a+b.length,0);
+  const wCount=Object.values(w).reduce((a,b)=>a+Object.keys(b).length,0);
   const avg=hist.length?(hist.reduce((a,h)=>a+h.score,0)/hist.length).toFixed(1):"—";
   app.innerHTML=`
   <div class="stat-grid">
@@ -570,3 +596,4 @@ render();
 </script>
 </body>
 </html>
+<!-- （注：内容由AI生成） -->
