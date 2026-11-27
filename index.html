@@ -111,6 +111,14 @@
   @media(max-width:600px){
     .opt{min-height:52px;padding:14px 14px;font-size:15px;}
     .qnav-btn{width:34px;height:34px;}
+    .type-grid{grid-template-columns:repeat(5,1fr);gap:6px;}
+    .type-card{padding:8px 4px;text-align:center;}
+    .type-icon{width:26px;height:26px;font-size:14px;margin:0 auto 4px;}
+    .type-card .t-title{font-size:11px;}
+    .type-card .t-desc{display:none;}
+    .type-foot{flex-direction:column;gap:2px;margin-top:6px;padding-top:6px;}
+    .type-foot .cnt{font-size:11px;}
+    .type-foot .st{font-size:10px;}
   }
     .wrap{padding:10px;}
     header h1{font-size:17px;}
@@ -120,7 +128,7 @@
     .btn{padding:10px 14px;}
     .stem{font-size:15px;}
     .bar-label{width:78px;}
-    .type-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .type-grid{grid-template-columns:repeat(5,1fr);gap:6px;}
   }
 </style>
 </head>
@@ -291,8 +299,8 @@ function snapPool(pool){return pool.map(x=>({t:x.t,no:x.q.no}));}
 function restorePool(snap){return (snap||[]).map(x=>({t:x.t,q:DATA[x.t].find(q=>q.no===x.no)})).filter(x=>x.q);}
 function snapState(s){return {pool:snapPool(s.pool),idx:s.idx,answers:s.answers,results:s.results,autoNext:!!s.autoNext};}
 function restoreState(s){return {pool:restorePool(s.pool),idx:s.idx,answers:s.answers||{},results:s.results||{},autoNext:!!s.autoNext};}
-function snapReview(s){return {pool:snapPool(s.pool),idx:s.idx,hide:!!s.hide};}
-function restoreReview(s){return {pool:restorePool(s.pool),idx:s.idx,hide:!!s.hide};}
+function snapReview(s){return {pool:snapPool(s.pool),idx:s.idx,hide:!!s.hide,viewed:s.viewed||[]};}
+function restoreReview(s){return {pool:restorePool(s.pool),idx:s.idx,hide:!!s.hide,viewed:Array.isArray(s.viewed)?s.viewed:[]};}
 function saveProgress(){
   const prog={};
   if(state.practiceMap)prog.practiceMap=Object.fromEntries(Object.entries(state.practiceMap).map(([k,v])=>[k,snapState(v)]));
@@ -422,23 +430,22 @@ function renderPractice(){
   const weak=weakType();
   // 五张卡独立统计：全部题型卡只看四类综合套，各题型卡只看对应套
   const pm=state.practiceMap||{};
-  const progByType={};
-  let allSet=null;
+  const doneAll=new Set();
+  const doneByType={};
   Object.values(pm).forEach(s=>{
     if(!s||!s.pool)return;
-    const tSet=new Set(s.pool.map(x=>x.t));
-    if(tSet.size===types.length){allSet=s;}
-    else{
-      s.pool.forEach(x=>{
-        const k=qkey(x.t,x.q);
-        progByType[x.t]=progByType[x.t]||{done:new Set(),total:new Set()};
-        progByType[x.t].total.add(k);
-        if(s.results[k])progByType[x.t].done.add(k);
-      });
-    }
+    const tSet=[...new Set(s.pool.map(x=>x.t))];
+    const isAll=tSet.length===types.length;
+    s.pool.forEach(x=>{
+      const k=qkey(x.t,x.q);
+      if(!Object.prototype.hasOwnProperty.call(s.results||{},k))return;
+      if(isAll)doneAll.add(k);
+      else(doneByType[x.t]=doneByType[x.t]||new Set()).add(k);
+    });
   });
-  const footAll=allSet?`已练 ${Object.keys(allSet.results).length}/${allSet.pool.length}`:"未开始";
-  const footType=t=>{const pr=progByType[t];return pr?`已练 ${pr.done.size}/${pr.total.size}`:"未开始";};
+  const totalAll=Object.values(DATA).reduce((a,x)=>a+x.length,0);
+  const footAll=doneAll.size?`已练 ${doneAll.size}/${totalAll}`:"未开始";
+  const footType=t=>{const d=doneByType[t];return d&&d.size?`已练 ${d.size}/${DATA[t].length}`:"未开始";};
   app.innerHTML=`
   <div class="card">
     <div class="muted">选择题型、顺序与题量，逐题作答，即时显示对错与解析；答错自动加入错题本。</div>
@@ -725,23 +732,23 @@ function renderReview(){
   const types=Object.keys(DATA);
   // 背题进度与刷题同口径：全部卡只看四类综合套，各题型卡只看对应套
   const rpm=state.reviewMap||{};
-  const rProgByType={};
-  let rAllSet=null;
+  const seenAll=new Set();
+  const seenByType={};
   Object.values(rpm).forEach(s=>{
     if(!s||!s.pool)return;
-    const tSet=new Set(s.pool.map(x=>x.t));
-    if(tSet.size===types.length){rAllSet=s;}
-    else{
-      s.pool.forEach((x,i)=>{
-        const k=qkey(x.t,x.q);
-        rProgByType[x.t]=rProgByType[x.t]||{done:new Set(),total:new Set()};
-        rProgByType[x.t].total.add(k);
-        if(i<s.idx)rProgByType[x.t].done.add(k);
-      });
-    }
+    const tSet=[...new Set(s.pool.map(x=>x.t))];
+    const isAll=tSet.length===types.length;
+    const viewed=new Set(s.viewed||[]);
+    s.pool.forEach(x=>{
+      const k=qkey(x.t,x.q);
+      if(!viewed.has(k))return;
+      if(isAll)seenAll.add(k);
+      else(seenByType[x.t]=seenByType[x.t]||new Set()).add(k);
+    });
   });
-  const rFootAll=rAllSet?`已浏览 ${rAllSet.idx}/${rAllSet.pool.length}`:"未开始";
-  const rFootType=t=>{const pr=rProgByType[t];return pr?`已浏览 ${pr.done.size}/${pr.total.size}`:"未开始";};
+  const rTotalAll=Object.values(DATA).reduce((a,x)=>a+x.length,0);
+  const rFootAll=seenAll.size?`已浏览 ${seenAll.size}/${rTotalAll}`:"未开始";
+  const rFootType=t=>{const d=seenByType[t];return d&&d.size?`已浏览 ${d.size}/${DATA[t].length}`:"未开始";};
   app.innerHTML=`
   <div class="card">
     <div class="muted">背题模式：浏览题目与答案解析，可先隐藏答案自测，再显示核对。</div>
@@ -790,7 +797,7 @@ function renderReview(){
     const saved=(!reset&&state.reviewMap[key])?state.reviewMap[key]:null;
     let r;
     if(saved){r=saved;}
-    else{r={pool,idx:0,hide:false};state.reviewMap[key]=r;}
+    else{r={pool,idx:0,hide:false,viewed:[]};state.reviewMap[key]=r;}
     state.review=r;state.reviewKey=key;
     saveProgress();renderReviewCard();
   };
@@ -818,6 +825,9 @@ function renderReviewCard(){
     return;
   }
   const {t,q}=r.pool[r.idx];
+  if(!Array.isArray(r.viewed))r.viewed=[];
+  const vk=qkey(t,q);
+  if(!r.viewed.includes(vk)){r.viewed.push(vk);saveProgress();}
   const hide=!!r.hide;
   const rightText=t==="judge"?(q.answer[0]==="T"?"√ 正确":"× 错误"):q.answer.join("、");
   let optsHtml="";
@@ -1262,6 +1272,7 @@ function renderStats(){
       <button class="btn btn-ghost" id="expBtn">导出备份（错题/成绩/记录/收藏/存疑）</button>
       <button class="btn btn-ghost" id="impBtn">导入备份</button>
       <button class="btn btn-ghost" id="bankBtn">导出题库对照表(CSV)</button>
+      <button class="btn btn-ghost" id="clearProg">重置练习/背题进度</button>
       <input type="file" id="impFile" accept="application/json" class="hidden">
     </div>
   </div>
@@ -1275,6 +1286,14 @@ function renderStats(){
   const impFile=document.getElementById("impFile");
   document.getElementById("impBtn").onclick=()=>impFile.click();
   impFile.onchange=()=>{if(impFile.files[0])importBackup(impFile.files[0]);};
+  document.getElementById("clearProg").onclick=()=>{
+    if(confirm("确定清空练习与背题的做题进度？（不影响错题本、收藏、正确率记录与考试成绩）")){
+      state.practiceMap={};state.reviewMap={};
+      state.wrongPractice=null;state.favPractice=null;
+      state.practice=null;state.review=null;state.practiceKey=null;
+      saveProgress();renderStats();
+    }
+  };
   document.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>{
     const r=getRecord();r[b.dataset.clear]={total:0,right:0};saveLS(LS_RECORD,r);renderStats();
   });
