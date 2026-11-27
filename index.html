@@ -80,7 +80,6 @@
   .qnav-btn.qnav-no{background:#FCEEEE;border-color:var(--red);color:var(--red);}
   .star-btn{border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:15px;padding:6px 10px;color:var(--sub);}
   .star-btn.on{color:var(--amber);border-color:var(--amber);background:#FFF4E5;}
-  .star-btn.doubt-on{color:var(--purple);border-color:var(--purple);background:#F3EEFF;}
   .bar-row{display:flex;align-items:center;gap:10px;margin:12px 0;}
   .bar-label{width:96px;font-size:13px;}
   .bar-label.ch{width:124px;}
@@ -96,7 +95,6 @@
   .dark .opt.sel{background:#26314A;}
   .dark .progress,.dark .bar-track{background:#2A303C;}
   .dark .star-btn.on{background:#3A2E12;}
-  .dark .star-btn.doubt-on{background:#2A2140;}
   /* 字号档位 */
   .font-sm body{font-size:14px;}
   .font-sm .stem{font-size:15px;}
@@ -104,7 +102,6 @@
   .font-lg .stem{font-size:18px;}
   /* 题号角标 */
   .qnav-btn.qnav-fav{border-color:var(--amber);color:var(--amber);}
-  .qnav-btn.qnav-doubt{border-color:var(--purple);color:var(--purple);}
   .qnav-btn .mk{font-size:9px;margin-left:1px;}
   /* 选项触控加大 */
   .opt{min-height:48px;padding:14px 16px;}
@@ -181,7 +178,7 @@ const CHAPTERS={
   cooling:{title:"冷却润滑与防护",icon:"❄",bg:"#EAF1FF",color:"#2563EB"},
   sales:{title:"销售流程与售后",icon:"✉",bg:"#FBEFEF",color:"#BE123C"}
 };
-const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1", LS_DOUBT="quiz_doubt_v1", LS_SETTINGS="quiz_settings_v1";
+const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1", LS_SETTINGS="quiz_settings_v1";
 
 let state = {view:"practice"};
 
@@ -263,15 +260,6 @@ function getFav(){
 }
 function inFav(t,q){return getFav()[t].includes(q.no);}
 function toggleFav(t,q){const f=getFav();const i=f[t].indexOf(q.no);if(i>=0)f[t].splice(i,1);else f[t].push(q.no);saveLS(LS_FAV,f);}
-
-/* ---------- 存疑标记 ---------- */
-function getDoubt(){
-  let d=loadLS(LS_DOUBT,{single:[],multi:[],judge:[],qa:[]});
-  ["single","multi","judge","qa"].forEach(t=>{if(!Array.isArray(d[t]))d[t]=[];});
-  return d;
-}
-function inDoubt(t,q){return getDoubt()[t].includes(q.no);}
-function toggleDoubt(t,q){const d=getDoubt();const i=d[t].indexOf(q.no);if(i>=0)d[t].splice(i,1);else d[t].push(q.no);saveLS(LS_DOUBT,d);}
 
 /* ---------- 设置（字号/深色） ---------- */
 function getSettings(){const s=loadLS(LS_SETTINGS,{font:"mid",dark:false});if(!s.font)s.font="mid";if(typeof s.dark!=="boolean")s.dark=false;return s;}
@@ -579,17 +567,18 @@ function renderPracticeCard(ctx){
   const done=!!p.results[key];
   const qaText=p.answers[key+"_text"]||"";
   const fav=inFav(t,q);
-  const doubt=inDoubt(t,q);
   app.innerHTML=`
   <div class="card">
-    <div class="muted">第 ${p.idx+1} / ${p.pool.length} 题${ctx==="wrong"?"（错题重练）":ctx==="fav"?"（收藏练习）":""}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted">第 ${p.idx+1} / ${p.pool.length} 题${ctx==="wrong"?"（错题重练）":ctx==="fav"?"（收藏练习）":""}</span>
+      <button class="btn btn-ghost" id="pQuit" style="padding:6px 10px;font-size:13px;white-space:nowrap">退出练习</button>
+    </div>
     <div class="progress"><i style="width:${(p.idx)/p.pool.length*100}%"></i></div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>
       ${q.chapter&&CHAPTERS[q.chapter]?`<span class="chip" style="background:${CHAPTERS[q.chapter].bg};color:${CHAPTERS[q.chapter].color};border-color:transparent">${CHAPTERS[q.chapter].title}</span>`:""}
       ${ctx==="wrong"?'<span class="chip">错题重练</span>':""}${ctx==="fav"?'<span class="chip">收藏练习</span>':""}
       <button class="star-btn ${fav?"on":""}" id="favBtn" title="收藏/取消收藏">${fav?"★":"☆"} 收藏</button>
-      <button class="star-btn ${doubt?"doubt-on":""}" id="doubtBtn" title="标记存疑">${doubt?"?":"？"} 存疑</button>
     </div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     <div class="opts" id="opts">${renderOptions(t,q,sel,done)}</div>
@@ -598,7 +587,6 @@ function renderPracticeCard(ctx){
     <div class="row">
       ${!done?`<button class="btn btn-primary" id="pCheck">提交答案</button>`:""}
       <button class="btn btn-ghost" id="pPrev">上一题</button><button class="btn btn-primary" id="pNext">${p.idx===p.pool.length-1?"完成":"下一题"}</button>
-      <button class="btn btn-ghost" id="pQuit">退出练习</button>
     </div>
     <div class="row">
       <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${p.pool.length}" value="${p.idx+1}" style="width:70px"> 题</label>
@@ -609,9 +597,9 @@ function renderPracticeCard(ctx){
       const r=p.results[k2];
       if(r)c=r.correct?"qnav-ok":"qnav-no";
       else if((p.answers[k2]||[]).length||(p.answers[k2+"_text"]||"").trim())c="qnav-done";
-      const isFav=inFav(x.t,x.q),isD=inDoubt(x.t,x.q);
-      const extra=[isFav?"qnav-fav":"",isD?"qnav-doubt":""].filter(Boolean).join(" ");
-      let mk="";if(isFav)mk+='<span class="mk">★</span>';if(isD)mk+='<span class="mk">?</span>';
+      const isFav=inFav(x.t,x.q);
+      const extra=isFav?"qnav-fav":"";
+      let mk="";if(isFav)mk+='<span class="mk">★</span>';
       return `<button class="qnav-btn ${c} ${extra} ${i===p.idx?"qnav-cur":""}" data-i="${i}">${i+1}${mk}</button>`;
     }).join("")}</div>
   </div>`;
@@ -636,8 +624,6 @@ function renderPracticeCard(ctx){
   };
   bindOptions(t,q,sel,done,p,()=>submitCurrent(true));
   document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderPracticeCard(ctx);};
-  const doubtBtn=document.getElementById("doubtBtn");
-  if(doubtBtn)doubtBtn.onclick=()=>{toggleDoubt(t,q);renderPracticeCard(ctx);};
   if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;saveProgress();};}
   document.getElementById("pQuit").onclick=()=>{
     if(ctx==="practice"){
@@ -853,13 +839,15 @@ function renderReviewCard(){
   }
   app.innerHTML=`
   <div class="card">
-    <div class="muted">第 ${r.idx+1} / ${r.pool.length} 题</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted">第 ${r.idx+1} / ${r.pool.length} 题</span>
+      <button class="btn btn-ghost" id="rQuit" style="padding:6px 10px;font-size:13px;white-space:nowrap">退出背题</button>
+    </div>
     <div class="progress"><i style="width:${r.idx/r.pool.length*100}%"></i></div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">题号 ${q.no}</span>
       ${q.chapter&&CHAPTERS[q.chapter]?`<span class="chip" style="background:${CHAPTERS[q.chapter].bg};color:${CHAPTERS[q.chapter].color};border-color:transparent">${CHAPTERS[q.chapter].title}</span>`:""}
       <button class="star-btn ${inFav(t,q)?"on":""}" id="favBtn">${inFav(t,q)?"★":"☆"} 收藏</button>
-      <button class="star-btn ${inDoubt(t,q)?"doubt-on":""}" id="doubtBtn" title="标记存疑">${inDoubt(t,q)?"?":"？"} 存疑</button>
     </div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     ${optsHtml}
@@ -868,22 +856,19 @@ function renderReviewCard(){
       <button class="btn btn-ghost" id="rPrev">上一题</button>
       <button class="btn btn-primary" id="rNext">${r.idx===r.pool.length-1?"完成":"下一题"}</button>
       <button class="btn btn-ghost" id="rHide">${hide?"显示答案":"隐藏答案"}</button>
-      <button class="btn btn-ghost" id="rQuit">退出背题</button>
     </div>
     <div class="row">
       <label class="muted">跳到第 <input id="jumpNo" type="number" min="1" max="${r.pool.length}" value="${r.idx+1}" style="width:70px"> 题</label>
       <button class="btn btn-ghost" id="jumpBtn">跳转</button>
     </div>
     <div class="qnav">${r.pool.map((x,i)=>{
-      const isFav=inFav(x.t,x.q),isD=inDoubt(x.t,x.q);
-      const extra=[isFav?"qnav-fav":"",isD?"qnav-doubt":""].filter(Boolean).join(" ");
-      let mk="";if(isFav)mk+='<span class="mk">★</span>';if(isD)mk+='<span class="mk">?</span>';
+      const isFav=inFav(x.t,x.q);
+      const extra=isFav?"qnav-fav":"";
+      let mk="";if(isFav)mk+='<span class="mk">★</span>';
       return `<button class="qnav-btn ${extra} ${i===r.idx?"qnav-cur":""}" data-i="${i}">${i+1}${mk}</button>`;
     }).join("")}</div>
   </div>`;
   document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderReviewCard();};
-  const rDoubt=document.getElementById("doubtBtn");
-  if(rDoubt)rDoubt.onclick=()=>{toggleDoubt(t,q);renderReviewCard();};
   document.getElementById("rQuit").onclick=()=>{state.review=null;saveProgress();renderReview();};
   const reveal=document.getElementById("revealBtn");
   if(reveal)reveal.onclick=()=>{r.hide=false;saveProgress();renderReviewCard();};
@@ -923,12 +908,14 @@ function renderExamCard(){
   const sel=e.answers[qkey(t,q)]||[];
   app.innerHTML=`
   <div class="card">
-    <div class="muted">第 ${e.idx+1} / ${e.paper.length} 题</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted">第 ${e.idx+1} / ${e.paper.length} 题</span>
+      <button class="btn btn-ghost" id="eQuit" style="padding:6px 10px;font-size:13px;white-space:nowrap">退出考试</button>
+    </div>
     <div class="progress"><i style="width:${e.idx/e.paper.length*100}%"></i></div>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">
       <span class="tag ${t}">${TYPE_NAME[t]}</span><span class="muted">${SCORE[t]} 分</span>
       <button class="star-btn ${inFav(t,q)?"on":""}" id="favBtn" title="收藏/取消收藏">${inFav(t,q)?"★":"☆"} 收藏</button>
-      <button class="star-btn ${inDoubt(t,q)?"doubt-on":""}" id="doubtBtn" title="标记存疑">${inDoubt(t,q)?"?":"？"} 存疑</button>
     </div>
     <div class="stem">${escapeHtml(q.stem)}</div>
     <div class="opts" id="opts">${renderOptions(t,q,sel,false)}</div>
@@ -937,22 +924,19 @@ function renderExamCard(){
       <button class="btn btn-ghost" id="ePrev">上一题</button>
       ${e.idx!==e.paper.length-1?`<button class="btn btn-ghost" id="eNext">下一题</button>`:""}
       <button class="btn btn-primary" id="eSubmit">交卷</button>
-      <button class="btn btn-ghost" id="eQuit">退出考试</button>
     </div>
     <div class="qnav">${e.paper.map((x,i)=>{
       const k2=qkey(x.t,x.q);
       const ans=(e.answers[k2]||[]).length||(e.answers[k2+"_text"]||"").trim();
-      const isFav=inFav(x.t,x.q),isD=inDoubt(x.t,x.q);
-      const extra=[isFav?"qnav-fav":"",isD?"qnav-doubt":""].filter(Boolean).join(" ");
-      let mk="";if(isFav)mk+='<span class="mk">★</span>';if(isD)mk+='<span class="mk">?</span>';
+      const isFav=inFav(x.t,x.q);
+      const extra=isFav?"qnav-fav":"";
+      let mk="";if(isFav)mk+='<span class="mk">★</span>';
       return `<button class="qnav-btn ${ans?"qnav-done":""} ${extra} ${i===e.idx?"qnav-cur":""}" data-i="${i}">${i+1}${mk}</button>`;
     }).join("")}</div>
   </div>`;
   bindOptionsExam(t,q,sel);
   const eFav=document.getElementById("favBtn");
   if(eFav)eFav.onclick=()=>{toggleFav(t,q);renderExamCard();};
-  const eDoubt=document.getElementById("doubtBtn");
-  if(eDoubt)eDoubt.onclick=()=>{toggleDoubt(t,q);renderExamCard();};
   document.querySelectorAll("#app .qnav-btn").forEach(b=>b.onclick=()=>{e.idx=parseInt(b.dataset.i);saveProgress();renderExamCard();});
   if(t==="qa")document.getElementById("qaText").oninput=ev=>{e.answers[qkey(t,q)+"_text"]=ev.target.value;saveProgress();};
   document.getElementById("ePrev").onclick=()=>{if(e.idx>0){e.idx--;saveProgress();renderExamCard();}};
@@ -1274,7 +1258,7 @@ function renderStats(){
   </div>
   <div class="card">
     <div class="row">
-      <button class="btn btn-ghost" id="expBtn">导出备份（错题/成绩/记录/收藏/存疑）</button>
+      <button class="btn btn-ghost" id="expBtn">导出备份（错题/成绩/记录/收藏）</button>
       <button class="btn btn-ghost" id="impBtn">导入备份</button>
       <button class="btn btn-ghost" id="bankBtn">导出题库对照表(CSV)</button>
       <button class="btn btn-ghost" id="clearProg">重置练习/背题进度</button>
@@ -1311,7 +1295,7 @@ function renderStats(){
   };
 }
 function exportBackup(){
-  const data={wrong:getWrong(),hist:loadLS(LS_HIST,[]),record:getRecord(),fav:getFav(),doubt:getDoubt(),exportedAt:new Date().toLocaleString()};
+  const data={wrong:getWrong(),hist:loadLS(LS_HIST,[]),record:getRecord(),fav:getFav(),exportedAt:new Date().toLocaleString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="刷题备份.json";a.click();URL.revokeObjectURL(a.href);
 }
@@ -1323,7 +1307,6 @@ function importBackup(file){
     if(d.hist)saveLS(LS_HIST,d.hist);
     if(d.record)saveLS(LS_RECORD,d.record);
     if(d.fav)saveLS(LS_FAV,d.fav);
-    if(d.doubt)saveLS(LS_DOUBT,d.doubt);
     alert("导入成功");renderStats();
   }catch(e){alert("文件格式不正确，导入失败");}};
   reader.readAsText(file);
