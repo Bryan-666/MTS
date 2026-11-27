@@ -1,4 +1,4 @@
-const CACHE = "mts-quiz-v29";
+const CACHE = "mts-quiz-v30";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -31,4 +31,3 @@ self.addEventListener("fetch", (event) => {
     )
   );
 });
-//（注：内容由AI生成）
