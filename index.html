@@ -151,6 +151,7 @@
         <option value="sm">小字</option><option value="mid">中字</option><option value="lg">大字</option>
       </select>
       <button id="setDark" class="btn btn-ghost" style="padding:6px 10px;font-size:13px">🌙 深色</button>
+      <span id="appVersion" class="muted" style="font-size:12px;white-space:nowrap" title="当前版本"></span>
     </div>
   </header>
   <div id="app"></div>
@@ -179,6 +180,7 @@ const CHAPTERS={
   sales:{title:"销售流程与售后",icon:"✉",bg:"#FBEFEF",color:"#BE123C"}
 };
 const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1", LS_SETTINGS="quiz_settings_v1";
+const APP_VERSION="v28";
 
 let state = {view:"practice"};
 
@@ -1264,6 +1266,7 @@ function renderStats(){
       <button class="btn btn-ghost" id="clearProg">重置练习/背题进度</button>
       <input type="file" id="impFile" accept="application/json" class="hidden">
     </div>
+    <div class="muted" style="font-size:12px;margin-top:10px">当前版本 ${APP_VERSION}</div>
   </div>
   <div class="card">
     ${hist.length?`<table><thead><tr><th>时间</th><th>得分</th><th>题数</th><th>题型答对情况</th></tr></thead><tbody>
@@ -1370,6 +1373,7 @@ function examKeys(k,e){
 
 function escapeHtml(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+const verEl=document.getElementById("appVersion");if(verEl)verEl.textContent=APP_VERSION;
 applySettings();
 loadProgress();
 setupSwipe();
