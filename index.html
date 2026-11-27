@@ -47,6 +47,17 @@
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;}
   input[type=checkbox]{width:18px;height:18px;vertical-align:middle;margin-right:4px;cursor:pointer;}
   .row input,.row select{padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;}
+  .type-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px;}
+  .type-card{position:relative;border:1px solid var(--line);border-radius:14px;padding:14px 12px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s;}
+  .type-card:hover{border-color:var(--blue);}
+  .type-card.sel{border-color:var(--blue);background:#EEF3FF;}
+  .type-card input[type=checkbox]{position:absolute;opacity:0;pointer-events:none;}
+  .type-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:8px;}
+  .type-card .t-title{font-weight:700;font-size:14px;}
+  .type-card .t-desc{color:var(--sub);font-size:12px;margin-top:2px;}
+  .type-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;}
+  .type-foot .cnt{font-weight:700;font-size:13px;}
+  .type-foot .st{color:var(--sub);font-size:11.5px;}
   .progress{height:8px;background:#ECEFF4;border-radius:6px;overflow:hidden;margin:10px 0;}
   .progress>i{display:block;height:100%;background:var(--blue);width:0;}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
@@ -82,6 +93,7 @@
     .btn{padding:10px 14px;}
     .stem{font-size:15px;}
     .bar-label{width:78px;}
+    .type-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
   }
 </style>
 </head>
@@ -106,6 +118,12 @@ const DATA = {"single": [{"no": 1, "stem": "ISO 513 标准把被加工材料分�
 const TYPE_NAME = {single:"单项选择", multi:"多项选择", judge:"判断题", qa:"问答题"};
 const EXAM_PLAN = {single:15, multi:20, judge:10, qa:4};
 const SCORE = {single:2, multi:2, judge:1, qa:5};
+const TYPE_META={
+  single:{icon:"①",bg:"#EEF3FF",color:"#3370FF",title:"单项选择题",desc:"每题 1 个正确答案"},
+  multi:{icon:"☑",bg:"#F3EEFF",color:"#7C3AED",title:"多项选择题",desc:"每题 2–4 个正确答案"},
+  judge:{icon:"✓",bg:"#EAF7EF",color:"#16A34A",title:"判断题",desc:"正确或错误"},
+  qa:{icon:"✎",bg:"#FFF4E5",color:"#F59E0B",title:"问答题",desc:"对照参考答案自评"}
+};
 const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1";
 
 let state = {view:"practice"};
@@ -191,20 +209,24 @@ function qkey(t,q){return t+"#"+q.no;}
 /* ---------- 进度持久化 ---------- */
 function snapPool(pool){return pool.map(x=>({t:x.t,no:x.q.no}));}
 function restorePool(snap){return (snap||[]).map(x=>({t:x.t,q:DATA[x.t].find(q=>q.no===x.no)})).filter(x=>x.q);}
+function snapState(s){return {pool:snapPool(s.pool),idx:s.idx,answers:s.answers,results:s.results,autoNext:!!s.autoNext};}
+function restoreState(s){return {pool:restorePool(s.pool),idx:s.idx,answers:s.answers||{},results:s.results||{},autoNext:!!s.autoNext};}
 function saveProgress(){
   const prog={};
-  if(state.practice)prog.practice={pool:snapPool(state.practice.pool),idx:state.practice.idx,answers:state.practice.answers,results:state.practice.results,autoNext:!!state.practice.autoNext};
-  if(state.wrongPractice)prog.wrongPractice={pool:snapPool(state.wrongPractice.pool),idx:state.wrongPractice.idx,answers:state.wrongPractice.answers,results:state.wrongPractice.results,autoNext:!!state.wrongPractice.autoNext};
-  if(state.favPractice)prog.favPractice={pool:snapPool(state.favPractice.pool),idx:state.favPractice.idx,answers:state.favPractice.answers,results:state.favPractice.results,autoNext:!!state.favPractice.autoNext};
+  if(state.practiceMap)prog.practiceMap=Object.fromEntries(Object.entries(state.practiceMap).map(([k,v])=>[k,snapState(v)]));
+  if(state.wrongPractice)prog.wrongPractice=snapState(state.wrongPractice);
+  if(state.favPractice)prog.favPractice=snapState(state.favPractice);
   if(state.review)prog.review={pool:snapPool(state.review.pool),idx:state.review.idx,hide:state.review.hide};
   if(state.exam&&!state.exam.submitted)prog.exam={pool:snapPool(state.exam.paper),idx:state.exam.idx,answers:state.exam.answers,qaEval:state.exam.qaEval};
   saveLS(LS_PROGRESS,prog);
 }
 function loadProgress(){
   const prog=loadLS(LS_PROGRESS,{});
-  if(prog.practice)state.practice={pool:restorePool(prog.practice.pool),idx:prog.practice.idx,answers:prog.practice.answers||{},results:prog.practice.results||{},autoNext:!!prog.practice.autoNext};
-  if(prog.wrongPractice)state.wrongPractice={pool:restorePool(prog.wrongPractice.pool),idx:prog.wrongPractice.idx,answers:prog.wrongPractice.answers||{},results:prog.wrongPractice.results||{},autoNext:!!prog.wrongPractice.autoNext};
-  if(prog.favPractice)state.favPractice={pool:restorePool(prog.favPractice.pool),idx:prog.favPractice.idx,answers:prog.favPractice.answers||{},results:prog.favPractice.results||{},autoNext:!!prog.favPractice.autoNext};
+  state.practiceMap={};
+  if(prog.practiceMap)Object.entries(prog.practiceMap).forEach(([k,v])=>state.practiceMap[k]=restoreState(v));
+  else if(prog.practice)state.practiceMap.all=restoreState(prog.practice);
+  if(prog.wrongPractice)state.wrongPractice=restoreState(prog.wrongPractice);
+  if(prog.favPractice)state.favPractice=restoreState(prog.favPractice);
   if(prog.review)state.review={pool:restorePool(prog.review.pool),idx:prog.review.idx,hide:!!prog.review.hide};
   if(prog.exam)state.exam={paper:restorePool(prog.exam.pool),idx:prog.exam.idx,answers:prog.exam.answers||{},qaEval:prog.exam.qaEval||{},submitted:false};
 }
@@ -247,40 +269,91 @@ function selectedTypes(cls){
   const checked=[...document.querySelectorAll("."+cls+":checked")].map(b=>b.value);
   return checked.includes("all")?"all":checked;
 }
+function shuffleOptions(q){
+  if(!q.options||!q.options.length) return q;
+  const labels=["A","B","C","D","E","F","G","H"];
+  const newOrder=shuffle(q.options.map((o,i)=>i)); // newOrder[新位置]=旧下标
+  const options=newOrder.map((oi,i)=>({key:labels[i],text:q.options[oi].text}));
+  const answer=q.answer.map(k=>{
+    const oi=q.options.findIndex(o=>o.key===k);
+    const np=newOrder.indexOf(oi);
+    return labels[np];
+  }).sort();
+  return {...q,options,answer};
+}
 function buildPool(type,order,kw,limit){
   let pool=[];
   const types=(type==="all")?Object.keys(DATA):(Array.isArray(type)?type:[type]);
   if(kw&&kw.trim()){pool=searchPool(kw);}
   else{types.forEach(t=>DATA[t].forEach(q=>pool.push({t,q})));}
-  if(order==="random")pool=shuffle(pool);
+  if(order==="random")order="qrand";
+  if(order==="arand"||order==="qarand")pool=pool.map(x=>({t:x.t,q:shuffleOptions(x.q)}));
+  if(order==="qrand"||order==="qarand")pool=shuffle(pool);
   if(limit&&limit>0)pool=pool.slice(0,limit);
   return pool;
 }
 
 /* ---------- 刷题练习 ---------- */
 function practiceStateName(ctx){return {wrong:"wrongPractice",fav:"favPractice"}[ctx]||"practice";}
+function pmKeyOf(types){return (Array.isArray(types)?[...types].sort():[types]).join(",");}
+function pmPoolKey(pool){return [...new Set(pool.map(x=>x.t))].sort().join(",");}
 function backToPracticeHome(ctx){
-  ctx=ctx||"practice";state[practiceStateName(ctx)]=null;saveProgress();
+  ctx=ctx||"practice";
+  if(ctx==="practice"){
+    if(state.practiceKey)delete state.practiceMap[state.practiceKey];
+    state.practice=null;state.practiceKey=null;
+  }else{state[practiceStateName(ctx)]=null;}
+  saveProgress();
   if(ctx==="wrong")renderWrong(); else if(ctx==="fav")renderFav(); else renderPractice();
 }
 function renderPractice(){
   const types=Object.keys(DATA);
   const weak=weakType();
+  // 五张卡独立统计：全部题型卡只看四类综合套，各题型卡只看对应套
+  const pm=state.practiceMap||{};
+  const progByType={};
+  let allSet=null;
+  Object.values(pm).forEach(s=>{
+    if(!s||!s.pool)return;
+    const tSet=new Set(s.pool.map(x=>x.t));
+    if(tSet.size===types.length){allSet=s;}
+    else{
+      s.pool.forEach(x=>{
+        const k=qkey(x.t,x.q);
+        progByType[x.t]=progByType[x.t]||{done:new Set(),total:new Set()};
+        progByType[x.t].total.add(k);
+        if(s.results[k])progByType[x.t].done.add(k);
+      });
+    }
+  });
+  const footAll=allSet?`已练 ${Object.keys(allSet.results).length}/${allSet.pool.length}`:"未开始";
+  const footType=t=>{const pr=progByType[t];return pr?`已练 ${pr.done.size}/${pr.total.size}`:"未开始";};
   app.innerHTML=`
   <div class="card">
     <div class="muted">选择题型、顺序与题量，逐题作答，即时显示对错与解析；答错自动加入错题本。</div>
-    <div class="row" style="align-items:center;flex-wrap:wrap">
-      <span class="muted">题型：</span>
-      <label><input type="checkbox" class="ptype" value="all" checked> 全部</label>
-      ${types.map(t=>`<label><input type="checkbox" class="ptype" value="${t}"> ${TYPE_NAME[t]}（${DATA[t].length}）</label>`).join("")}
+    <div class="type-grid">
+      <div class="type-card sel" data-val="all">
+        <input type="checkbox" class="ptype" value="all" checked>
+        <div class="type-icon" style="background:#F0F2F7;color:#1F2733">✦</div>
+        <div class="t-title">全部题型</div>
+        <div class="t-desc">四类综合练习</div>
+        <div class="type-foot"><span class="cnt">${Object.values(DATA).reduce((a,x)=>a+x.length,0)} 题</span><span class="st">${footAll}</span></div>
+      </div>
+      ${types.map(t=>{const m=TYPE_META[t];return `<div class="type-card" data-val="${t}">
+        <input type="checkbox" class="ptype" value="${t}">
+        <div class="type-icon" style="background:${m.bg};color:${m.color}">${m.icon}</div>
+        <div class="t-title">${m.title}</div>
+        <div class="t-desc">${m.desc}</div>
+        <div class="type-foot"><span class="cnt">${DATA[t].length} 题</span><span class="st">${footType(t)}</span></div>
+      </div>`;}).join("")}
     </div>
     <div class="row">
       <label>顺序：<select id="pOrder">
-        <option value="seq">顺序</option><option value="random">随机</option>
+        <option value="seq" selected>不随机</option><option value="qrand">题目顺序随机</option><option value="arand">答案顺序随机</option><option value="qarand">题目和答案顺序随机</option>
       </select></label>
       <label>题量：<input id="pLimit" type="number" min="0" placeholder="0=全部" style="width:86px"></label>
       <label>答对后：<select id="pAuto">
-        <option value="manual">手动点下一题</option><option value="auto">答对自动跳下一题</option>
+        <option value="auto" selected>答对自动跳下一题</option><option value="manual">手动点下一题</option>
       </select></label>
       <button class="btn btn-primary" id="pStart">开始练习</button>
     </div>
@@ -291,10 +364,18 @@ function renderPractice(){
     </div>
     <div class="muted" id="pSearchInfo" style="margin-top:8px"></div>
   </div>`;
-  const start=(pool)=>{
+  const start=(pool,key,reset)=>{
     if(!pool.length){alert("没有匹配的题目");return;}
     const auto=document.getElementById("pAuto")&&document.getElementById("pAuto").value==="auto";
-    state.practice={pool,idx:0,answers:{},results:{},autoNext:auto};saveProgress();renderPracticeCard("practice");
+    key=key||pmPoolKey(pool);
+    const saved=(!reset&&state.practiceMap[key])?state.practiceMap[key]:null;
+    if(saved&&saved.idx<saved.pool.length){
+      state.practice=saved;state.practiceKey=key;
+    }else{
+      const fresh={pool,idx:0,answers:{},results:{},autoNext:auto};
+      state.practiceMap[key]=fresh;state.practice=fresh;state.practiceKey=key;
+    }
+    saveProgress();renderPracticeCard("practice");
   };
   const selectedTypes=()=>{
     const checked=[...document.querySelectorAll(".ptype:checked")].map(b=>b.value);
@@ -302,31 +383,39 @@ function renderPractice(){
   };
   const typeBoxes=[...document.querySelectorAll(".ptype")];
   const allBox=typeBoxes.find(b=>b.value==="all");
+  const refreshCards=()=>{document.querySelectorAll(".type-card").forEach(c=>{const b=typeBoxes.find(x=>x.value===c.dataset.val);c.classList.toggle("sel",!!(b&&b.checked));});};
   typeBoxes.forEach(b=>b.onchange=()=>{
     if(b===allBox&&b.checked){typeBoxes.forEach(x=>{if(x!==allBox)x.checked=false;});}
     else if(b!==allBox&&b.checked){allBox.checked=false;}
+    refreshCards();
   });
-  // 双击某个题型：只选该题型并直接开始练习
-  typeBoxes.forEach(b=>b.ondblclick=()=>{
-    typeBoxes.forEach(x=>x.checked=false);
-    b.checked=true;
-    start(buildPool(b.value,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0));
+  document.querySelectorAll(".type-card").forEach(c=>{
+    const b=typeBoxes.find(x=>x.value===c.dataset.val);
+    c.onclick=()=>b.click();
+    // 双击某个题型：有保存进度则继续，否则新开该题型练习
+    c.ondblclick=()=>{
+      typeBoxes.forEach(x=>x.checked=false);
+      b.checked=true;refreshCards();
+      const dkey=b.value==="all"?pmKeyOf(types):pmKeyOf(b.value);
+      start(buildPool(b.value,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0),dkey);
+    };
   });
   document.getElementById("pStart").onclick=()=>{
     const sel=selectedTypes();
     if(sel!=="all"&&!sel.length){alert("请至少选择题型");return;}
-    start(buildPool(sel,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0));
+    const key=sel==="all"?pmKeyOf(types):pmKeyOf(sel);
+    start(buildPool(sel,document.getElementById("pOrder").value,document.getElementById("pKw").value,parseInt(document.getElementById("pLimit").value)||0),key,true);
   };
   document.getElementById("pSearch").onclick=()=>{
     const kw=document.getElementById("pKw").value;
     const pool=searchPool(kw);
     document.getElementById("pSearchInfo").textContent=pool.length?`匹配到 ${pool.length} 题`:"无匹配结果";
-    start(pool);
+    start(pool,"kw:"+kw.trim(),true);
   };
   const kwInput=document.getElementById("pKw");
   kwInput.oninput=()=>{const pool=searchPool(kwInput.value);document.getElementById("pSearchInfo").textContent=pool.length?`匹配到 ${pool.length} 题`:"无匹配结果";};
   const weakBtn=document.getElementById("pWeak");
-  if(weakBtn)weakBtn.onclick=()=>{start(buildPool(weak,"random","",0));};
+  if(weakBtn)weakBtn.onclick=()=>{start(buildPool(weak,"random","",0),pmKeyOf(weak),true);};
 }
 function weakType(){
   let best=null,bestAcc=101;
@@ -380,7 +469,8 @@ function renderPracticeCard(ctx){
     }).join("")}</div>
   </div>`;
 
-  const submitCurrent=()=>{
+  const submitCurrent=(forceNext)=>{
+    if(p.results[key])return;
     let correct;
     if(t==="qa"){
       p.answers[key+"_text"]=document.getElementById("qaText").value;
@@ -392,15 +482,22 @@ function renderPracticeCard(ctx){
       recordResult(t,q,correct,ctx);recordAnswer(t,correct);
     }
     saveProgress();renderPracticeCard(ctx);
-    const auto=p.autoNext&&correct===true&&t!=="qa";
+    const auto=(p.autoNext&&correct===true&&t!=="qa")||forceNext;
     if(auto&&p.idx<p.pool.length-1){
-      setTimeout(()=>{p.idx++;saveProgress();renderPracticeCard(ctx);},300);
+      setTimeout(()=>{p.idx++;saveProgress();renderPracticeCard(ctx);},100);
     }
   };
-  bindOptions(t,q,sel,done,p,submitCurrent);
+  bindOptions(t,q,sel,done,p,()=>submitCurrent(true));
   document.getElementById("favBtn").onclick=()=>{toggleFav(t,q);renderPracticeCard(ctx);};
   if(t==="qa"){document.getElementById("qaText").oninput=e=>{p.answers[key+"_text"]=e.target.value;saveProgress();};}
-  document.getElementById("pQuit").onclick=()=>{state[sName]=null;saveProgress(); if(ctx==="wrong")renderWrong(); else if(ctx==="fav")renderFav(); else renderPractice();};
+  document.getElementById("pQuit").onclick=()=>{
+    if(ctx==="practice"){
+      if(state.practice&&state.practiceKey)state.practiceMap[state.practiceKey]=state.practice;
+      state.practice=null;state.practiceKey=null;
+      saveProgress();renderPractice();
+    }
+    else{state[sName]=null;saveProgress(); if(ctx==="wrong")renderWrong(); else renderFav();}
+  };
 
   if(done){
     const r=p.results[key];
@@ -446,7 +543,6 @@ function bindOptions(t,q,sel,disabled,p,onDbl){
       if(el._t&&now-el._t<300){sync(true);onDbl&&onDbl();}
       el._t=now;
     };
-    el.ondblclick=()=>{sync(true);onDbl&&onDbl();};
   });
 }
 function isCorrect(t,q,sel){
@@ -493,31 +589,52 @@ function renderReview(){
   app.innerHTML=`
   <div class="card">
     <div class="muted">背题模式：浏览题目与答案解析，可先隐藏答案自测，再显示核对。</div>
-    <div class="row" style="align-items:center;flex-wrap:wrap">
-      <span class="muted">题型：</span>
-      <label><input type="checkbox" class="rtype" value="all" checked> 全部</label>
-      ${types.map(t=>`<label><input type="checkbox" class="rtype" value="${t}"> ${TYPE_NAME[t]}（${DATA[t].length}）</label>`).join("")}
+    <div class="type-grid">
+      <div class="type-card sel" data-val="all">
+        <input type="checkbox" class="rtype" value="all" checked>
+        <div class="type-icon" style="background:#F0F2F7;color:#1F2733">✦</div>
+        <div class="t-title">全部题型</div>
+        <div class="t-desc">四类综合背题</div>
+        <div class="type-foot"><span class="cnt">${Object.values(DATA).reduce((a,x)=>a+x.length,0)} 题</span><span class="st">未开始</span></div>
+      </div>
+      ${types.map(t=>{const m=TYPE_META[t];return `<div class="type-card" data-val="${t}">
+        <input type="checkbox" class="rtype" value="${t}">
+        <div class="type-icon" style="background:${m.bg};color:${m.color}">${m.icon}</div>
+        <div class="t-title">${m.title}</div>
+        <div class="t-desc">${m.desc}</div>
+        <div class="type-foot"><span class="cnt">${DATA[t].length} 题</span><span class="st">未开始</span></div>
+      </div>`;}).join("")}
     </div>
     <div class="row">
       <label>顺序：<select id="rOrder">
-        <option value="seq">顺序</option><option value="random">随机</option>
+        <option value="seq" selected>不随机</option><option value="qrand">题目顺序随机</option><option value="arand">答案顺序随机</option><option value="qarand">题目和答案顺序随机</option>
       </select></label>
       <button class="btn btn-primary" id="rStart">开始背题</button>
     </div>
   </div>`;
-  bindCheckAll("rtype");
+  const rBoxes=[...document.querySelectorAll(".rtype")];
+  const rAll=rBoxes.find(b=>b.value==="all");
+  const rRefresh=()=>{document.querySelectorAll(".type-card").forEach(c=>{const b=rBoxes.find(x=>x.value===c.dataset.val);c.classList.toggle("sel",!!(b&&b.checked));});};
+  rBoxes.forEach(b=>b.onchange=()=>{
+    if(b===rAll&&b.checked){rBoxes.forEach(x=>{if(x!==rAll)x.checked=false;});}
+    else if(b!==rAll&&b.checked){rAll.checked=false;}
+    rRefresh();
+  });
   const startReview=(sel)=>{
     if(sel!=="all"&&!sel.length){alert("请至少选择题型");return;}
     const pool=buildPool(sel,document.getElementById("rOrder").value,"",0);
     state.review={pool,idx:0,hide:false};saveProgress();renderReviewCard();
   };
   document.getElementById("rStart").onclick=()=>startReview(selectedTypes("rtype"));
-  // 双击某个题型：只选该题型并直接开始背题
-  const rBoxes=[...document.querySelectorAll(".rtype")];
-  rBoxes.forEach(b=>b.ondblclick=()=>{
-    rBoxes.forEach(x=>x.checked=false);
-    b.checked=true;
-    startReview(b.value);
+  document.querySelectorAll(".type-card").forEach(c=>{
+    const b=rBoxes.find(x=>x.value===c.dataset.val);
+    c.onclick=()=>b.click();
+    // 双击某个题型：只选该题型并直接开始背题
+    c.ondblclick=()=>{
+      rBoxes.forEach(x=>x.checked=false);
+      b.checked=true;rRefresh();
+      startReview(b.value);
+    };
   });
 }
 function renderReviewCard(){
@@ -757,6 +874,7 @@ function renderWrong(){
   Object.keys(w).forEach(t=>{Object.keys(w[t]).forEach(noStr=>{const no=parseInt(noStr);const q=DATA[t].find(x=>x.no===no);if(q)allPool.push({t,q,info:w[t][noStr]});});});
   if(!allPool.length){app.innerHTML=`<div class="card muted">暂无错题，继续保持！</div>`;return;}
   const existTypes=Object.keys(DATA).filter(t=>allPool.some(x=>x.t===t));
+  const wrongCount=t=>allPool.filter(x=>x.t===t).length;
   const sortPool=list=>{
     const mode=document.getElementById("wSort")?document.getElementById("wSort").value:"weak";
     const arr=list.slice();
@@ -778,11 +896,24 @@ function renderWrong(){
   app.innerHTML=`
   <div class="card">
     <div class="muted" id="wCount"></div>
-    <div class="row" style="align-items:center;flex-wrap:wrap">
-      <span class="muted">题型：</span>
-      <label><input type="checkbox" class="wtype" value="all" checked> 全部</label>
-      ${existTypes.map(t=>`<label><input type="checkbox" class="wtype" value="${t}"> ${TYPE_NAME[t]}</label>`).join("")}
-      <label style="margin-left:auto">排序：<select id="wSort">
+    <div class="type-grid">
+      <div class="type-card sel" data-val="all">
+        <input type="checkbox" class="wtype" value="all" checked>
+        <div class="type-icon" style="background:#F0F2F7;color:#1F2733">✦</div>
+        <div class="t-title">全部错题</div>
+        <div class="t-desc">四类错题综合重练</div>
+        <div class="type-foot"><span class="cnt">${allPool.length} 题</span><span class="st">待重练</span></div>
+      </div>
+      ${existTypes.map(t=>{const m=TYPE_META[t];return `<div class="type-card" data-val="${t}">
+        <input type="checkbox" class="wtype" value="${t}">
+        <div class="type-icon" style="background:${m.bg};color:${m.color}">${m.icon}</div>
+        <div class="t-title">${m.title}</div>
+        <div class="t-desc">${m.desc}</div>
+        <div class="type-foot"><span class="cnt">${wrongCount(t)} 题</span><span class="st">待重练</span></div>
+      </div>`;}).join("")}
+    </div>
+    <div class="row">
+      <label>排序：<select id="wSort">
         <option value="weak">最薄弱优先</option>
         <option value="recent">最近练习优先</option>
       </select></label>
@@ -794,27 +925,29 @@ function renderWrong(){
   const boxes=[...document.querySelectorAll(".wtype")];
   const allBox=boxes.find(b=>b.value==="all");
   const refresh=()=>{const f=filterPool();document.getElementById("wCount").textContent=`共 ${f.length} 道错题；需连续答对 ${WRONG_PASS} 次后才会自动移出错题本，答错则重新计数。`;document.getElementById("wRows").innerHTML=rowsHtml(f);};
+  const wRefresh=()=>{document.querySelectorAll(".type-card").forEach(c=>{const b=boxes.find(x=>x.value===c.dataset.val);c.classList.toggle("sel",!!(b&&b.checked));});};
   boxes.forEach(b=>b.onchange=()=>{
     if(b===allBox&&b.checked){boxes.forEach(x=>{if(x!==allBox)x.checked=false;});}
     else if(b!==allBox&&b.checked){allBox.checked=false;}
-    refresh();
+    wRefresh();refresh();
   });
   document.getElementById("wSort").onchange=refresh;
   refresh();
-  document.getElementById("wStart").onclick=()=>{
+  const launchWrong=()=>{
     const f=filterPool();
     if(!f.length){alert("没有匹配的错题");return;}
     state.wrongPractice={pool:shuffle(f.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
     saveProgress();renderPracticeCard("wrong");
   };
-  // 双击某个题型：只选该题型并直接开始重练
-  boxes.forEach(b=>b.ondblclick=()=>{
-    boxes.forEach(x=>x.checked=false);
-    b.checked=true;
-    const f=filterPool();
-    if(!f.length){alert("没有匹配的错题");return;}
-    state.wrongPractice={pool:shuffle(f.map(({t,q})=>({t,q}))),idx:0,answers:{},results:{}};
-    saveProgress();renderPracticeCard("wrong");
+  document.getElementById("wStart").onclick=launchWrong;
+  document.querySelectorAll(".type-card").forEach(c=>{
+    const b=boxes.find(x=>x.value===c.dataset.val);
+    c.onclick=()=>b.click();
+    // 双击某个题型：只选该题型并直接开始重练
+    c.ondblclick=()=>{
+      boxes.forEach(x=>x.checked=false);
+      b.checked=true;wRefresh();launchWrong();
+    };
   });
   document.getElementById("wClear").onclick=()=>{if(confirm("确定清空全部错题？")){setWrong({single:{},multi:{},judge:{},qa:{}});saveProgress();renderWrong();}};
 }
