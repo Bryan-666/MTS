@@ -22,6 +22,7 @@
   nav button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;}
   .muted{color:var(--sub);font-size:13px;}
+  .ver-tag{font-size:12px;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;white-space:nowrap;}
   .btn{border:none;border-radius:10px;padding:10px 18px;font-size:14px;cursor:pointer;}
   .btn-primary{background:var(--blue);color:#fff;}
   .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--txt);}
@@ -151,7 +152,7 @@
         <option value="sm">小字</option><option value="mid">中字</option><option value="lg">大字</option>
       </select>
       <button id="setDark" class="btn btn-ghost" style="padding:6px 10px;font-size:13px">🌙 深色</button>
-      <span id="appVersion" class="muted" style="font-size:12px;white-space:nowrap" title="当前版本"></span>
+      <span id="appVersion" class="ver-tag" title="当前版本">版本 v29</span>
     </div>
   </header>
   <div id="app"></div>
@@ -180,7 +181,7 @@ const CHAPTERS={
   sales:{title:"销售流程与售后",icon:"✉",bg:"#FBEFEF",color:"#BE123C"}
 };
 const LS_WRONG="quiz_wrong_v1", LS_HIST="quiz_history_v1", LS_RECORD="quiz_record_v1", LS_FAV="quiz_fav_v1", LS_PROGRESS="quiz_progress_v1", LS_DAILY="quiz_daily_v1", LS_SETTINGS="quiz_settings_v1";
-const APP_VERSION="v28";
+const APP_VERSION="v29";
 
 let state = {view:"practice"};
 
@@ -1373,7 +1374,7 @@ function examKeys(k,e){
 
 function escapeHtml(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
-const verEl=document.getElementById("appVersion");if(verEl)verEl.textContent=APP_VERSION;
+const verEl=document.getElementById("appVersion");if(verEl)verEl.textContent="版本 "+APP_VERSION;
 applySettings();
 loadProgress();
 setupSwipe();
