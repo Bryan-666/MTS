@@ -193,18 +193,18 @@ function snapPool(pool){return pool.map(x=>({t:x.t,no:x.q.no}));}
 function restorePool(snap){return (snap||[]).map(x=>({t:x.t,q:DATA[x.t].find(q=>q.no===x.no)})).filter(x=>x.q);}
 function saveProgress(){
   const prog={};
-  if(state.practice)prog.practice={pool:snapPool(state.practice.pool),idx:state.practice.idx,answers:state.practice.answers,results:state.practice.results};
-  if(state.wrongPractice)prog.wrongPractice={pool:snapPool(state.wrongPractice.pool),idx:state.wrongPractice.idx,answers:state.wrongPractice.answers,results:state.wrongPractice.results};
-  if(state.favPractice)prog.favPractice={pool:snapPool(state.favPractice.pool),idx:state.favPractice.idx,answers:state.favPractice.answers,results:state.favPractice.results};
+  if(state.practice)prog.practice={pool:snapPool(state.practice.pool),idx:state.practice.idx,answers:state.practice.answers,results:state.practice.results,autoNext:!!state.practice.autoNext};
+  if(state.wrongPractice)prog.wrongPractice={pool:snapPool(state.wrongPractice.pool),idx:state.wrongPractice.idx,answers:state.wrongPractice.answers,results:state.wrongPractice.results,autoNext:!!state.wrongPractice.autoNext};
+  if(state.favPractice)prog.favPractice={pool:snapPool(state.favPractice.pool),idx:state.favPractice.idx,answers:state.favPractice.answers,results:state.favPractice.results,autoNext:!!state.favPractice.autoNext};
   if(state.review)prog.review={pool:snapPool(state.review.pool),idx:state.review.idx,hide:state.review.hide};
   if(state.exam&&!state.exam.submitted)prog.exam={pool:snapPool(state.exam.paper),idx:state.exam.idx,answers:state.exam.answers,qaEval:state.exam.qaEval};
   saveLS(LS_PROGRESS,prog);
 }
 function loadProgress(){
   const prog=loadLS(LS_PROGRESS,{});
-  if(prog.practice)state.practice={pool:restorePool(prog.practice.pool),idx:prog.practice.idx,answers:prog.practice.answers||{},results:prog.practice.results||{}};
-  if(prog.wrongPractice)state.wrongPractice={pool:restorePool(prog.wrongPractice.pool),idx:prog.wrongPractice.idx,answers:prog.wrongPractice.answers||{},results:prog.wrongPractice.results||{}};
-  if(prog.favPractice)state.favPractice={pool:restorePool(prog.favPractice.pool),idx:prog.favPractice.idx,answers:prog.favPractice.answers||{},results:prog.favPractice.results||{}};
+  if(prog.practice)state.practice={pool:restorePool(prog.practice.pool),idx:prog.practice.idx,answers:prog.practice.answers||{},results:prog.practice.results||{},autoNext:!!prog.practice.autoNext};
+  if(prog.wrongPractice)state.wrongPractice={pool:restorePool(prog.wrongPractice.pool),idx:prog.wrongPractice.idx,answers:prog.wrongPractice.answers||{},results:prog.wrongPractice.results||{},autoNext:!!prog.wrongPractice.autoNext};
+  if(prog.favPractice)state.favPractice={pool:restorePool(prog.favPractice.pool),idx:prog.favPractice.idx,answers:prog.favPractice.answers||{},results:prog.favPractice.results||{},autoNext:!!prog.favPractice.autoNext};
   if(prog.review)state.review={pool:restorePool(prog.review.pool),idx:prog.review.idx,hide:!!prog.review.hide};
   if(prog.exam)state.exam={paper:restorePool(prog.exam.pool),idx:prog.exam.idx,answers:prog.exam.answers||{},qaEval:prog.exam.qaEval||{},submitted:false};
 }
@@ -363,7 +363,8 @@ function renderPracticeCard(ctx){
     ${t==="qa"?`<textarea class="qa-box" id="qaText" ${done?"disabled":""} placeholder="在此输入你的作答（可对照下方参考答案要点自评）">${escapeHtml(qaText)}</textarea>`:""}
     <div class="feedback" id="fb"></div>
     <div class="row">
-      ${!done?`<button class="btn btn-primary" id="pCheck">提交答案</button>`:`<button class="btn btn-ghost" id="pPrev">上一题</button><button class="btn btn-primary" id="pNext">${p.idx===p.pool.length-1?"完成":"下一题"}</button>`}
+      ${!done?`<button class="btn btn-primary" id="pCheck">提交答案</button>`:""}
+      <button class="btn btn-ghost" id="pPrev">上一题</button><button class="btn btn-primary" id="pNext">${p.idx===p.pool.length-1?"完成":"下一题"}</button>
       <button class="btn btn-ghost" id="pQuit">退出练习</button>
     </div>
     <div class="row">
@@ -393,7 +394,7 @@ function renderPracticeCard(ctx){
     saveProgress();renderPracticeCard(ctx);
     const auto=p.autoNext&&correct===true&&t!=="qa";
     if(auto&&p.idx<p.pool.length-1){
-      setTimeout(()=>{p.idx++;saveProgress();renderPracticeCard(ctx);},600);
+      setTimeout(()=>{p.idx++;saveProgress();renderPracticeCard(ctx);},300);
     }
   };
   bindOptions(t,q,sel,done,p,submitCurrent);
