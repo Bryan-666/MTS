@@ -431,21 +431,22 @@ function bindOptions(t,q,sel,disabled,p,onDbl){
   document.querySelectorAll("#opts .opt").forEach(el=>{
     if(disabled){el.classList.add("disabled");return;}
     const k=el.dataset.key;
+    const sync=(forceOn)=>{
+      let cur=p.answers[qkey(t,q)]||[];
+      if(t==="multi"){
+        if(forceOn){if(!cur.includes(k))cur.push(k);}
+        else{cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}
+      }else{cur=[k];}
+      p.answers[qkey(t,q)]=cur;saveProgress();
+      document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
+    };
     el.onclick=()=>{
-      let cur=p.answers[qkey(t,q)]||[];
-      if(t==="multi"){cur.includes(k)?cur.splice(cur.indexOf(k),1):cur.push(k);}
-      else{cur=[k];}
-      p.answers[qkey(t,q)]=cur;saveProgress();
-      document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
+      sync(false);
+      const now=Date.now();
+      if(el._t&&now-el._t<300){sync(true);onDbl&&onDbl();}
+      el._t=now;
     };
-    el.ondblclick=()=>{
-      if(disabled)return;
-      let cur=p.answers[qkey(t,q)]||[];
-      if(t==="multi"){if(!cur.includes(k))cur.push(k);}else{cur=[k];}
-      p.answers[qkey(t,q)]=cur;saveProgress();
-      document.querySelectorAll("#opts .opt").forEach(x=>x.classList.toggle("sel",cur.includes(x.dataset.key)));
-      onDbl&&onDbl();
-    };
+    el.ondblclick=()=>{sync(true);onDbl&&onDbl();};
   });
 }
 function isCorrect(t,q,sel){
