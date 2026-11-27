@@ -1,4 +1,4 @@
-const CACHE = "mts-quiz-v27";
+const CACHE = "mts-quiz-v28";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
